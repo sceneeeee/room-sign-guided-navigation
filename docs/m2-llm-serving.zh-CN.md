@@ -64,6 +64,49 @@ roomnav-llm --target EB104 --observations examples/observations_eb.jsonl --timeo
 
 首次成功后再测试 `qwen3:4b-thinking-2507-q4_K_M`（官方目录同样约 2.5 GB），为 Thinking 版本调整 `--max-tokens` / `--temperature` 并检查输出是否符合严格 JSON。模型包大小不等于 GPU 峰值显存。目录：[Ollama Qwen3 tags](https://ollama.com/library/qwen3/tags)，[Ollama OpenAI compatibility](https://github.com/ollama/ollama/blob/main/docs/api/openai-compatibility.mdx)。
 
+## M2.3b v2：修正动作语义与三场景回归
+
+**已观察到的真实案例（2026-10-14，更新 Prompt 之前）：** Ollama 上的 Qwen3-4B-Instruct-2507 Q4_K_M 收到目标 EB104、已观察 EB102 和 EB103 的数据，耗时约 47.9 秒，使用 931 输入 + 168 输出 tokens。模型原始 JSON 承认 EB104 尚未观察到，却错误选择 `VERIFY_TARGET`。程序端以 `verify_requires_cited_consistent_target` 拒绝，安全回退到规则的 `CONTINUE_ALONG_SEGMENT`。**此案例属于模型决策无效，不属于 LLM 成功。**
+
+新版 Prompt 标识为 `m2.3b-action-guide-v2`，强化六种搜索动作的操作含义，显式解释 `VERIFY_TARGET` 只能针对已观察且多帧一致的**目标门牌**，不能针对邻居 EB102/EB103。程序从**冻结的当前证据**计算并传给系统提示两个布尔值：`found_authorized` 和 `verify_target_authorized`。这不是把规则 baseline 的最佳动作直接告诉模型；另外四种非特权动作仍由 LLM 选择。既有 Python 安全校验、非法输出记录与回退保持不变。`roomnav-llm` 输出增添 `prompt_version` 字段以区分不同 Prompt。
+
+拉取后，先运行完整单元测试：
+
+```bash
+cd ~/projects/room-sign-guided-navigation
+git pull --ff-only
+.venv/bin/python -m unittest discover -s tests -q
+source .venv/bin/activate
+export ROOMNAV_LLM_BASE_URL=http://127.0.0.1:11434/v1
+export ROOMNAV_LLM_MODEL=qwen3:4b-instruct-2507-q4_K_M
+```
+
+再按同一模型依次运行以下三个冻结测试。每条命令都向本机 Ollama 发起一次真实请求：
+
+1. **未观察到目标：** `EB102 → EB103`，目标 `EB104`。期望不选 `FOUND` / `VERIFY_TARGET`，并且 `fallback_used=false`。
+
+   ```bash
+   roomnav-llm --target EB104 --observations examples/observations_eb.jsonl \
+     --json-mode --timeout 90 --max-tokens 512 --output-jsonl results-m23b.jsonl
+   ```
+
+2. **多帧观察目标但未人工确认：** 期望 `VERIFY_TARGET`，不得宣称 `FOUND`。
+
+   ```bash
+   roomnav-llm --target EB104 --observations examples/observations_target_eb.jsonl \
+     --json-mode --timeout 90 --max-tokens 512 --output-jsonl results-m23b.jsonl
+   ```
+
+3. **人工确认目标：** 期望 `FOUND`，引用已确认的地标 ID。
+
+   ```bash
+   roomnav-llm --target EB104 --observations examples/observations_target_eb.jsonl \
+     --confirmations examples/confirmations_eb.jsonl \
+     --json-mode --timeout 90 --max-tokens 512 --output-jsonl results-m23b.jsonl
+   ```
+
+检查输出中的 `prompt_version`、`llm_result.fallback_used`、`error_kind`、`llm_result.decision.action`、`usage` 和耗时。**通过 JSON/证据校验不证明搜索策略最优**，后续至少需要 10–20 个不同的冻结 episode 与独立真值，避免仅用“和规则答案一致”充当准确率。若全部请求很慢，在模型正在运行时用另一终端 `ollama ps` / `nvidia-smi` 观察 GPU 使用状况。此阶段仍不必部署 VLM。
+
 ## MacBook 与 GPU 之间的连接
 
 服务如果运行在远程 GPU 电脑上，建议**仅绑定远程 localhost，再使用 SSH 端口转发**。在 MacBook / WSL 上建立转发之后，可将 `ROOMNAV_LLM_BASE_URL` 指向转发后的 `http://127.0.0.1:8000/v1`。如果跨不可信网络直接连接，使用 HTTPS 和经过鉴权的端点，避免把视频 OCR 与实验观测以明文发送。
