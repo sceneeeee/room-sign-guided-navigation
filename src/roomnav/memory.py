@@ -8,6 +8,7 @@ physical landmark automatically.
 
 from dataclasses import dataclass, field
 
+from .confirmation import LandmarkConfirmation
 from .landmark import Landmark
 from .observation import Kind, Observation
 
@@ -16,6 +17,7 @@ from .observation import Kind, Observation
 class LandmarkMemory:
     observations: list[Observation] = field(default_factory=list)
     landmarks: dict[str, Landmark] = field(default_factory=dict, init=False)
+    confirmations: dict[str, LandmarkConfirmation] = field(default_factory=dict, init=False)
     _observation_ids: dict[str, Observation] = field(default_factory=dict, init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -60,6 +62,28 @@ class LandmarkMemory:
             landmark.add_observation(observation)
         return True
 
+    def confirm_label(
+        self, landmark_id: str, text: str, *, confirmed_by: str = "operator"
+    ) -> LandmarkConfirmation:
+        """Record explicit human confirmation, separate from raw OCR evidence.
+
+        This prototype stores the latest confirmation per landmark. It does
+        not yet maintain an append-only audit log of correction events.
+        """
+        landmark = self.get_landmark(landmark_id)
+        if landmark is None:
+            raise ValueError(f"Unknown landmark_id: {landmark_id}")
+        if landmark.kind != "room":
+            raise ValueError("Only room labels can be confirmed in M2.2")
+        confirmation = LandmarkConfirmation(
+            landmark_id=landmark_id, text=text.strip().upper(), confirmed_by=confirmed_by
+        )
+        self.confirmations[landmark_id] = confirmation
+        return confirmation
+
+    def get_confirmation(self, landmark_id: str) -> LandmarkConfirmation | None:
+        return self.confirmations.get(landmark_id)
+
     def rooms(self, segment_id: str | None = None) -> list[Observation]:
         """Raw room observations, retained for backwards compatibility."""
         return [
@@ -90,5 +114,14 @@ class LandmarkMemory:
             "unassociated_observation_count": sum(
                 o.landmark_id is None for o in self.observations
             ),
-            "landmarks": [lm.to_dict() for lm in self.landmarks.values()],
+            "landmarks": [
+                {
+                    **lm.to_dict(),
+                    "confirmation": (
+                        self.confirmations[lm.landmark_id].to_dict()
+                        if lm.landmark_id in self.confirmations else None
+                    ),
+                }
+                for lm in self.landmarks.values()
+            ],
         }

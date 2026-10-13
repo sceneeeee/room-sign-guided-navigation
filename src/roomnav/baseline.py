@@ -1,16 +1,22 @@
-"""Deliberately conservative, rule-based baseline; not a ReasonNav reproduction.
+"""M2.2: Conservative search decisions using explicitly associated landmarks.
 
-The rule does not treat numbering as an established law and abstains when
-observations are insufficient or ambiguous.
+OCR text is evidence of a model reading, NOT verified room identity. Distinct
+landmarks, consistent candidate readings, and explicit human confirmation have
+different evidentiary status. Decisions are observation suggestions, not poses.
 """
 
 import re
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Literal
+
 from .memory import LandmarkMemory
 
 RoomAction = Literal[
-    "FOUND", "CONTINUE_ALONG_SEGMENT", "CHECK_MISSING_OR_OTHER_SIDE",
+    "FOUND",
+    "VERIFY_TARGET",
+    "REOBSERVE",
+    "CONTINUE_ALONG_SEGMENT",
+    "CHECK_MISSING_OR_OTHER_SIDE",
     "INSUFFICIENT_EVIDENCE",
 ]
 
@@ -18,7 +24,7 @@ ROOM_RE = re.compile(r"^\s*([A-Za-z]{1,8})\s*[- ]?\s*(\d{1,6})([A-Za-z]?)\s*$")
 
 
 def parse_room_number(text: str) -> tuple[str, int, str] | None:
-    """Parse e.g. EB104, EB-104, EB104A; do not infer layout rules."""
+    """Parse a single alphanumeric room identifier, not a room-number range."""
     match = ROOM_RE.fullmatch(text)
     if not match:
         return None
@@ -29,47 +35,196 @@ def parse_room_number(text: str) -> tuple[str, int, str] | None:
 class Decision:
     action: RoomAction
     reason: str
+    facts: tuple[str, ...] = ()
     assumptions: tuple[str, ...] = ()
+    uncertainties: tuple[str, ...] = ()
+    evidence_landmark_ids: tuple[str, ...] = ()
+
+    def to_dict(self) -> dict:
+        return asdict(self)
 
 
-def decide_next(target: str, memory: LandmarkMemory) -> Decision:
+def _compatible(room: tuple[str, int, str], target: tuple[str, int, str]) -> bool:
+    return room[0] == target[0] and room[2] == target[2]
+
+
+def decide_next(
+    target: str, memory: LandmarkMemory, *, segment_id: str | None = None
+) -> Decision:
+    """Choose a conservative next observation, never a metric navigation goal.
+
+    The latest observed segment is used unless supplied explicitly. The human
+    operator must use one consistent corridor direction for the sequence.
+    """
     target_id = parse_room_number(target)
     if target_id is None:
-        return Decision("INSUFFICIENT_EVIDENCE", "Target is not a supported room identifier.")
+        return Decision(
+            "INSUFFICIENT_EVIDENCE",
+            "Target is not a supported single room identifier.",
+            uncertainties=("Target identifier may need manual clarification.",),
+        )
 
-    # Matching the complete text prevents false positives on ambiguous suffixes.
-    for obs in memory.rooms():
-        if parse_room_number(obs.text) == target_id:
-            return Decision("FOUND", "Target room number was observed; visually verify the door.")
+    # An explicit operator confirmation is the ONLY way to declare FOUND.
+    for lm in memory.landmark_list(kind="room"):
+        confirmed = memory.get_confirmation(lm.landmark_id)
+        if confirmed is not None and parse_room_number(confirmed.text) == target_id:
+            return Decision(
+                "FOUND",
+                "The operator explicitly confirmed the target room number.",
+                facts=(f"Operator-confirmed label {confirmed.text} at landmark {lm.landmark_id}.",),
+                uncertainties=("This is a recorded human confirmation, not metric localization.",),
+                evidence_landmark_ids=(lm.landmark_id,),
+            )
 
     if not memory.observations:
         return Decision("INSUFFICIENT_EVIDENCE", "No observations collected yet.")
 
-    # Respect segment boundaries: never infer across different corridors.
-    current_segment = memory.observations[-1].segment_id
-    comparable = [
-        parse_room_number(o.text) for o in memory.rooms(current_segment)
+    active = segment_id if segment_id is not None else memory.observations[-1].segment_id
+    if not active.strip():
+        raise ValueError("segment_id cannot be blank")
+    rooms = memory.landmark_list(segment_id=active, kind="room")
+
+    # Raw frames without association never establish the target location.
+    if any(
+        obs.landmark_id is None and parse_room_number(obs.text) == target_id
+        for obs in memory.rooms(active)
+    ):
+        return Decision(
+            "REOBSERVE",
+            "A raw OCR reading matches the target but is not associated with a door.",
+            facts=(f"A frame was read as {target.strip().upper()} in corridor {active}.",),
+            uncertainties=("The readout could be OCR noise or a repeated frame.",),
+        )
+
+    # Repeated matching OCR is still not human-verified ground truth.
+    for lm in rooms:
+        if memory.get_confirmation(lm.landmark_id) is not None:
+            continue
+        if any(parse_room_number(label) == target_id for label in lm.label_votes):
+            if lm.status == "consistent" and lm.candidate_text is not None:
+                return Decision(
+                    "VERIFY_TARGET",
+                    "The associated landmark was repeatedly read as the target; request human confirmation.",
+                    facts=(f"Landmark {lm.landmark_id} has repeated OCR text {lm.candidate_text}.",),
+                    uncertainties=("Matching OCR readings are correlated and may all be wrong.",),
+                    evidence_landmark_ids=(lm.landmark_id,),
+                )
+            return Decision(
+                "REOBSERVE",
+                "A target-like reading is single-frame or conflicts with another reading.",
+                facts=(f"Landmark {lm.landmark_id} OCR votes: {lm.label_votes}.",),
+                uncertainties=("The room label remains unconfirmed.",),
+                evidence_landmark_ids=(lm.landmark_id,),
+            )
+
+    # An unresolved landmark can reverse a numbering trend: collect evidence.
+    uncertain = [
+        lm for lm in rooms
+        if lm.status == "conflicted" and memory.get_confirmation(lm.landmark_id) is None
     ]
-    comparable = [r for r in comparable if r is not None and r[0] == target_id[0] and r[2] == target_id[2]]
-    if len(comparable) < 2:
-        return Decision("INSUFFICIENT_EVIDENCE", "Fewer than two comparable room labels on this corridor.")
+    if uncertain:
+        lm = uncertain[-1]
+        return Decision(
+            "REOBSERVE",
+            "Unresolved OCR or side disagreement may change the corridor numbering trend.",
+            facts=(f"Landmark {lm.landmark_id} shows: {lm.label_votes}.",),
+            uncertainties=("Operator confirmation or an additional viewpoint is needed.",),
+            evidence_landmark_ids=(lm.landmark_id,),
+        )
 
-    # Only the last pair is used; OCR errors can still invalidate this assumption.
-    n1, n2 = comparable[-2][1], comparable[-1][1]
-    if n1 == n2:
-        return Decision("INSUFFICIENT_EVIDENCE", "Duplicate observed number; no usable trend.")
+    # Count distinct physical IDs, never repeated video frames. Human-verified
+    # labels may override noisy OCR while preserving the raw observations.
+    evidence = []
+    for lm in rooms:
+        confirmation = memory.get_confirmation(lm.landmark_id)
+        if confirmation is not None:
+            label = confirmation.text
+            source = "operator-confirmed"
+        elif lm.status == "consistent":
+            label = lm.candidate_text
+            source = "consistent OCR candidate"
+        else:
+            continue
+        parsed = parse_room_number(label) if label is not None else None
+        if parsed is not None and _compatible(parsed, target_id):
+            evidence.append((lm, parsed[1], source))
 
-    direction = 1 if n2 > n1 else -1
-    if (target_id[1] - n2) * direction > 0:
+    if len(evidence) < 2:
+        return Decision(
+            "INSUFFICIENT_EVIDENCE",
+            f"Need two distinct, reliably associated room landmarks in corridor {active}.",
+            uncertainties=(
+                "Single or unassociated OCR frames cannot establish a numbering trend.",
+                "The corridor reference direction and observation order are operator-annotated.",
+            ),
+            evidence_landmark_ids=tuple(item[0].landmark_id for item in evidence),
+        )
+
+    numbers = [entry[1] for entry in evidence]
+    steps = [b - a for a, b in zip(numbers, numbers[1:])]
+    if any(step == 0 for step in steps) or not (
+        all(step > 0 for step in steps) or all(step < 0 for step in steps)
+    ):
+        return Decision(
+            "INSUFFICIENT_EVIDENCE",
+            "Observed room-number sequence is not strictly monotonic.",
+            facts=(f"Associated room numbers in corridor {active}: {numbers}.",),
+            uncertainties=("Possible skipped/revisited doors, OCR error, or irregular numbering.",),
+            evidence_landmark_ids=tuple(lm.landmark_id for lm, _, _ in evidence),
+        )
+
+    direction = 1 if steps[-1] > 0 else -1
+    ahead = (target_id[1] - numbers[-1]) * direction > 0
+    last_two = evidence[-2:]
+    fact = (
+        f"In corridor {active}, associated landmarks "
+        + " -> ".join(f"{lm.landmark_id}={n} ({source})" for lm, n, source in evidence)
+        + "."
+    )
+    assumptions = (
+        "The experiment's corridor direction and traversal order are consistent.",
+        "The numbering trend continues locally; it is not a known floor plan.",
+    )
+    uncertainties = (
+        "Repeated OCR readings are not independent verification of room identity.",
+        "Room numbers can skip, branch, or alternate between sides.",
+    )
+    evidence_ids = tuple(lm.landmark_id for lm, _, _ in evidence)
+
+    # Parity is an explicitly tentative inference, not an established rule.
+    side = last_two[0][0].side
+    parity_hypothesis = (
+        side in ("left", "right")
+        and last_two[1][0].side == side
+        and last_two[0][1] % 2 == last_two[1][1] % 2
+        and target_id[1] % 2 != last_two[1][1] % 2
+    )
+    if parity_hypothesis:
+        opposite = "right" if side == "left" else "left"
+        return Decision(
+            "CHECK_MISSING_OR_OTHER_SIDE",
+            f"Tentatively inspect the {opposite} side"
+            + (" while continuing along this corridor." if ahead else " or earlier gaps."),
+            facts=(fact, f"The two most recent usable room labels were on the {side} side with the same parity."),
+            assumptions=assumptions + ("This building may use odd/even room numbering across sides.",),
+            uncertainties=uncertainties + ("No opposite-side numbering rule has been verified.",),
+            evidence_landmark_ids=evidence_ids,
+        )
+
+    if ahead:
         return Decision(
             "CONTINUE_ALONG_SEGMENT",
-            "Target is ahead under a local monotonic-numbering assumption.",
-            ("This corridor's observed room numbers are locally monotonic.",
-             "OCR readings and observation order are correct.",
-             "Room numbering may skip or alternate sides."),
+            "Continue observing farther along this corridor, without claiming the target's location.",
+            facts=(fact,),
+            assumptions=assumptions,
+            uncertainties=uncertainties,
+            evidence_landmark_ids=evidence_ids,
         )
     return Decision(
         "CHECK_MISSING_OR_OTHER_SIDE",
-        "The target is not ahead under the observed local trend; inspect gaps/other side or backtrack.",
-        ("The observed numbers may be incomplete or inaccurate.",),
+        "The target does not lie ahead under this provisional trend; inspect gaps or the other side.",
+        facts=(fact,),
+        assumptions=assumptions,
+        uncertainties=uncertainties,
+        evidence_landmark_ids=evidence_ids,
     )
