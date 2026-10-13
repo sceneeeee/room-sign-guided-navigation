@@ -19,7 +19,7 @@
 | **M4 实验对照** | 逐门搜索 / 规则 / VLM 在相同起点、信息预算下对比 | 成功率、门数、距离、用时、失败分析 | 两人 |
 | **Future** | 视结果评估 Frogbot / 机器人导航集成 | 另定计划 | 暂不承诺 |
 
-当前代码：`apps/live_demo.py` 提供远程视频帧 OCR 原型，实际 USB 摄像头 / SSH 尚未验收。**M2.1 Landmark Memory 和 M2.2 证据分级规则基线已在独立 CLI 实现**；门牌检测、视频地标关联、VLM、实时写入地标与线下闭环仍待开发。详见 [M2.2 设计](m2-rule-reasoning.zh-CN.md)。
+当前代码：`apps/live_demo.py` 提供远程视频帧 OCR 原型，实际 USB 摄像头 / SSH 尚未验收。**M2.1 Memory、M2.2 规则、M2.3a JSON Planner 与 M2.3b OpenAI-compatible 文本模型适配器已在独立 CLI 实现**；门牌检测、视频地标关联、VLM、实时写入地标与线下闭环仍待开发。详见 [M2.2 设计](m2-rule-reasoning.zh-CN.md)。
 
 ## 分工及现场调试
 
@@ -34,4 +34,4 @@
 主要参考 [ReasonNav (CoRL 2025)](https://reasonnav.github.io/) 和 [官方代码](https://github.com/ReasonNav/ReasonNav)。本项目首先验证视觉文字观测与高层搜索策略，尚非完整机器人复现。OCR 错误、跳号和冲突编号条件下的主动搜索属于需进一步文献核验的候选研究问题。
  
 
-**M2.3 开发规格：** [可替换 LLM Planner 的接口、约束与验收标准](m2-llm-planner.zh-CN.md)。此阶段仍为计划，未实现或完成真实模型测试。
+**M2.3 开发状态：** [LLM Planner 规格与实现](m2-llm-planner.zh-CN.md)，[M2.3b API 接入和运行指南](m2-llm-serving.zh-CN.md)。客户端代码和离线测试已添加，**真实 Qwen 推理尚未运行，视频闭环也尚未实现**。

@@ -22,7 +22,7 @@ MacBook + USB RGB 摄像头（实时视频采样）  [M0 最小代码已实现�
       ↓ 门/门牌检测、跨帧确认和去重     [M1 待开发]
 RoomObservation → Landmark Memory       [已有数据结构，待接入视频]
       ↓
-编号规则 / VLM 下一步观察建议          [M2.2 证据分级规则已实现；VLM 待开发]
+编号规则 / LLM 高层搜索建议            [M2.3b 文本模型 API 已实现；实测待做]
       ↓
 人按建议行走并继续观察                [现场闭环待集成]
 ~~~
@@ -62,7 +62,7 @@ roomnav-baseline --target EB104 --observations examples/observations_eb.jsonl
 python -m unittest discover -s tests -v
 ~~~
 
-M2.1 Landmark Memory 和 M2.2 保守规则推理已在独立 CLI 中实现。现场摄像头尚未验收；门牌检测、跨帧去重、实时记忆入库和 VLM 推理仍未集成。详见 [M2.2 设计](docs/m2-rule-reasoning.zh-CN.md)。详细步骤见 [部署文档](docs/setup.zh-CN.md)。
+M2.1 Memory、M2.2 规则推理、M2.3a 严格 JSON Planner 及 M2.3b OpenAI-compatible 文本模型接口已在独立 CLI 中实现。**尚未连接并验证真实 Qwen 服务器**；现场摄像头、门牌检测、跨帧去重、实时记忆入库和 VLM 仍未集成。详见 [M2.2 设计](docs/m2-rule-reasoning.zh-CN.md)。详细步骤见 [部署文档](docs/setup.zh-CN.md)。
 
 ## 视频流优先的里程碑
 
@@ -70,7 +70,7 @@ M2.1 Landmark Memory 和 M2.2 保守规则推理已在独立 CLI 中实现。现
 | --- | --- | --- |
 | **M0 · 实时视频接入** | MacBook USB 摄像头 → Gradio 采样 → SSH → GPU OCR → 返回文本 | 流式上传和远程识别跑通，测量实际采样与延迟（原型代码已有，实测待做） |
 | **M1 · 门牌实时识别** | 自动发现门/门牌，读取 EB104 等完整编号，多帧确认、同门去重 | 输出可核验的门牌编号并保存失败样本 |
-| **M2 · 地标记忆和推理** | M2.1 关联记忆、M2.2 证据规则基线已实现；VLM 和视频流接入待开发 | 独立输出有事实/假设/不确定性的搜索建议，完整闭环未验收 |
+| **M2 · 地标记忆和推理** | M2.1–M2.3b 软件框架实现；待真实 Qwen 推理与视频流集成 | 本地 Mock HTTP 测试通过，真实楼层效果尚未评估 |
 | **M3 · 线下人机闭环** | 人在走廊移动，按系统建议检查门牌；Codex 辅助现场调试 | 完成未知房间搜索并留存日志 |
 | **M4 · 对照评估** | 对比逐门搜索、局部编号规则、VLM | 搜索成功率、查看门数、行走距离和耗时 |
 
@@ -95,6 +95,7 @@ M2.1 Landmark Memory 和 M2.2 保守规则推理已在独立 CLI 中实现。现
 - [路线与分工](docs/roadmap.zh-CN.md)
 - [模块接口](docs/interfaces.zh-CN.md)
 - [M2.2 基于证据的规则推理](docs/m2-rule-reasoning.zh-CN.md)
+- [M2.3b 真实 LLM 接入与运行](docs/m2-llm-serving.zh-CN.md)
 - [环境部署与 SSH](docs/setup.zh-CN.md)
 
 目前的算法价值首先是**可验证的工程复现与实验对照**，不是声称原创了 OCR+VLM 找房间；OCR 误读、跳号、编号规则不一致以及主动重复观察属于后续需进一步查新验证的研究方向。

@@ -62,7 +62,7 @@ The webcam demo does **not** yet implement door detection, room-number validatio
 
 1. **M0 — Live feed:** MacBook webcam → Gradio frame samples → SSH → remote OCR → displayed output. Starter implemented; real-world validation pending.
 2. **M1 — Video recognition:** detect doorplates, read full alphanumeric labels, confirm across frames, reject ambiguities and deduplicate.
-3. **M2 — Landmark memory + reasoning:** M2.1 association memory and M2.2 evidence-aware rule baseline are implemented in an independent CLI; live-video integration and VLM planning remain planned.
+3. **M2 — Landmark memory + reasoning:** M2.1 memory, M2.2 evidence-aware rules, M2.3a constrained LLM planner and the M2.3b OpenAI-compatible text backend are implemented; real Qwen serving, live-video integration and VLM experiments remain unvalidated.
 4. **M3 — Human-in-the-loop field search:** person follows model suggestions; Member B leads on-site testing and Codex-assisted debugging.
 5. **M4 — Controlled evaluation:** compare sequential-door search, numbering heuristics and VLM decisions (success rate, doors checked, distance/time).
 
@@ -86,6 +86,7 @@ Robot integration (Frogbot/SLAM/Nav2) and depth sensing are **out of scope for t
 - [Roadmap and two-person responsibilities (中文)](docs/roadmap.zh-CN.md)
 - [Perception / reasoning interface (中文)](docs/interfaces.zh-CN.md)
 - [M2.2 evidence-aware rule baseline (中文)](docs/m2-rule-reasoning.zh-CN.md)
+- [M2.3b OpenAI-compatible text inference setup (中文)](docs/m2-llm-serving.zh-CN.md)
 
 **Research integrity:** adapting existing open-source tools is not in itself a novel algorithm. Robustness to OCR errors, irregular numbering and exploration cost is a candidate research question, not an established contribution.
 

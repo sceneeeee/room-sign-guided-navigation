@@ -140,3 +140,8 @@ Prompt 与 schema 不能证明自由文本 `reason`、`assumptions`、`uncertain
 审查时曾复现手动脚本的 `AssertionError`：它把 `git diff --no-index --check /dev/null <新增文件>` 的退出码强制断言为 0。在本机该命令没有输出任何空白错误，但因为文件有差异仍返回 1；这不是 planner 缺陷。检查此类命令应同时接受正常差异退出码 1，并要求 stdout/stderr 没有空白错误诊断。包含未跟踪文件的 diff 统计也必须采用 `--no-index` 或临时目录比较，普通 `git diff --stat` 不会包含它们。
 
 参考：[ReasonNav 源码](https://github.com/ReasonNav/ReasonNav)、[M2.2 规则基线](m2-rule-reasoning.zh-CN.md)。
+
+
+## 7. M2.3b 进度
+
+已新增可配置的 OpenAI-compatible Chat Completions 文本模型客户端，以及 `roomnav-llm` 命令行 Rule-based/LLM 同快照对照入口。与真正 Qwen 的联网或本地推理尚未实测；配置方式、使用命令、安全限制与离线模拟测试请见 [M2.3b 运行指南](m2-llm-serving.zh-CN.md)。
