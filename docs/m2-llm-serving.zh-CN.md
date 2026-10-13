@@ -40,6 +40,30 @@ roomnav-llm --target EB104 --observations examples/observations_eb.jsonl \
 
 对于 Qwen Thinking，模型可能使用较多输出 token；可增大 `--max-tokens`。一些推理服务把思考内容放入独立 `reasoning_content`，另一些可能将 `<think>` 放在 `content`；若不是严格 JSON，当前 Planner 会**安全回退**而不是通过正则截取 JSON 伪造成功。只在支持 JSON mode 的服务上尝试 `--json-mode`，否则服务器可能返回 HTTP 错误。
 
+## 8GB 显卡的可选首次部署：Ollama + Qwen3-4B
+
+如果在自己的 GPU 电脑上使用 Ollama，优先选择官方模型目录中的 **Qwen3-4B-Instruct-2507 Q4_K_M**（模型包约 2.5 GB，实际运行显存还取决于上下文与推理设置）。这只是推荐的本地部署方案，**尚未在项目机器上验证**。
+
+先确保 [Ollama](https://ollama.com/) 已安装且服务已启动。在安装了 Ollama 的终端运行：
+
+```bash
+ollama pull qwen3:4b-instruct-2507-q4_K_M
+ollama list
+```
+
+当服务已在端口 `11434` 监听时，**在运行本项目的 WSL 终端**执行：
+
+```bash
+curl --max-time 10 http://127.0.0.1:11434/v1/models
+export ROOMNAV_LLM_BASE_URL=http://127.0.0.1:11434/v1
+export ROOMNAV_LLM_MODEL=qwen3:4b-instruct-2507-q4_K_M
+roomnav-llm --target EB104 --observations examples/observations_eb.jsonl --timeout 60 --max-tokens 1024
+```
+
+如果 Ollama 在 Windows、而项目在 WSL2，`localhost` 的可达性取决于网络模式和端口转发，**先以 curl 是否成功为准**；不要通过关闭防火墙或全网开放推理端口来凑通。Ollama 的本地 OpenAI-compatible 接口支持 `/v1/chat/completions`，本项目不需要安装 OpenAI Python SDK。
+
+首次成功后再测试 `qwen3:4b-thinking-2507-q4_K_M`（官方目录同样约 2.5 GB），为 Thinking 版本调整 `--max-tokens` / `--temperature` 并检查输出是否符合严格 JSON。模型包大小不等于 GPU 峰值显存。目录：[Ollama Qwen3 tags](https://ollama.com/library/qwen3/tags)，[Ollama OpenAI compatibility](https://github.com/ollama/ollama/blob/main/docs/api/openai-compatibility.mdx)。
+
 ## MacBook 与 GPU 之间的连接
 
 服务如果运行在远程 GPU 电脑上，建议**仅绑定远程 localhost，再使用 SSH 端口转发**。在 MacBook / WSL 上建立转发之后，可将 `ROOMNAV_LLM_BASE_URL` 指向转发后的 `http://127.0.0.1:8000/v1`。如果跨不可信网络直接连接，使用 HTTPS 和经过鉴权的端点，避免把视频 OCR 与实验观测以明文发送。
