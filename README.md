@@ -1,6 +1,6 @@
 # Room & Sign-Guided Indoor Navigation
 
-[中文说明](README.zh-CN.md) · **Status: initial research scaffold — no validated results yet**
+[中文说明](README.zh-CN.md) · **Status: main is an M0/RapidOCR prototype; M2.1–M2.3c is on an unmerged development branch**
 
 An **RGB-first, human-in-the-loop** testbed for reading room numbers and signage and reasoning about where to search for a room whose location is unknown.
 
@@ -9,6 +9,16 @@ An **RGB-first, human-in-the-loop** testbed for reading room numbers and signage
 Can an agent use **previously observed** room labels, directional signage and lightweight topological notes to search for a target room more efficiently than simply checking doors one by one?
 
 The initial prototype is **not a mobile-robot deployment**. A person carries a phone/USB RGB camera; a MacBook presents the experiment and may connect to a remote GPU computer via SSH. The system recognizes text, records landmarks and suggests the next place to observe. The person executes the decision.
+
+## Development snapshot — 2026-10-14
+
+**Branch boundary:** The default `main` branch contains the M0 webcam/RapidOCR starter and early reasoning scaffolding. M2.1–M2.3c are implemented on [`feat/m2-reasoning`](https://github.com/sceneeeee/room-sign-guided-navigation/tree/feat/m2-reasoning) and **have not been merged into `main`**. The M2 commands and experiments below refer to the feature branch, not to executable features on `main`.
+
+- **Implemented on the feature branch:** landmark/evidence memory (M2.1), evidence-aware rule baseline (M2.2), constrained text-LLM planning and fallback (M2.3a), local Ollama/Qwen3-4B integration (M2.3b), and a 20-scenario frozen single-step policy evaluator (M2.3c). The 154 unit tests passed in five consecutive local WSL runs.
+- **Recorded offline comparison (20 synthetic scenarios, Qwen3-4B-Instruct-2507 Q4_K_M, Prompt v2):** Rule-based policy had **19/20 (95%)** legal and acceptable actions, with one repeated-frame eligibility defect. Qwen had **10/20 (50%)** acceptable actions, **20/20 (100%)** legal outputs, **0** fallbacks and **17/20 (85%)** abstentions; mean model latency was about **1.89 s**.
+- **Limitations:** These are manually authored **single-step simulation** outcomes, not live corridor search success, traveled distance, or evidence that a model is superior. Field-camera integration, M1 door/sign perception and cross-frame association, the full M3/M4 loop, and VLM deployment remain incomplete. **Prompt v3 has not been developed.**
+
+See the [feature-branch M2.3c evaluation protocol](https://github.com/sceneeeee/room-sign-guided-navigation/blob/feat/m2-reasoning/docs/m2-offline-evaluation.zh-CN.md) for methodology and metrics. Future work: investigate over-abstention without relaxing evidence checks, then integrate verified perception outputs into memory and field testing.
 
 ## Architecture — video-first
 

@@ -1,6 +1,6 @@
 # 基于门牌与指示牌的室内导航（Room & Sign-Guided Indoor Navigation）
 
-[English](README.md) · **阶段：研究原型初始化；目前尚无实验结果**
+[English](README.md) · **阶段：main 为 M0/RapidOCR 原型；M2.1–M2.3c 在独立开发分支，尚未合并**
 
 ## 核心目标
 
@@ -12,6 +12,16 @@
 
 1. **视觉感知：** RGB 图像能否稳定找到门牌并读取完整编号？
 2. **空间推理：** 当目标尚未出现时，基于已有编号和走廊关系，能否提高搜索效率？
+
+## 开发进度快照（2026-10-14）
+
+**分支边界：** 默认 `main` 分支目前提供 M0 摄像头/RapidOCR 原型与早期推理脚手架。**M2.1–M2.3c 的完整实现位于 [`feat/m2-reasoning`](https://github.com/sceneeeee/room-sign-guided-navigation/tree/feat/m2-reasoning)，尚未合并至 `main`。** 下述 M2 命令与实验结果属于开发分支，不能假定可在 `main` 直接运行。
+
+- **开发分支已实现：** M2.1 地标与证据记忆、M2.2 规则基线、M2.3a 受约束文本 LLM Planner/回退、M2.3b 本地 Ollama/Qwen3-4B 接入、M2.3c 20 个冻结单步场景与策略评估；**154 项单元测试在本地 WSL 连续五轮通过**。
+- **已完成的离线对照（20 个模拟场景，Qwen3-4B-Instruct-2507 Q4_K_M，Prompt v2）：** Rule-based **19/20（95%）**动作合法且可接受（同帧重复计数有 1 个已知问题）；Qwen **10/20（50%）**可接受、**20/20（100%）**合法、**0 次** fallback、**17/20（85%）**选择弃权，平均推理延迟约 **1.89 秒**。
+- **尚未完成：** 结果仅针对人工设计的**单步模拟场景**，不代表真实寻房成功率；M0 现场链路验收、M1 门牌检测/跨帧关联、M2 与视频流集成、M3/M4 现场闭环及 VLM 部署均未完成。**Prompt v3 尚未开发。**
+
+详见[开发分支 M2.3c 评估文档](https://github.com/sceneeeee/room-sign-guided-navigation/blob/feat/m2-reasoning/docs/m2-offline-evaluation.zh-CN.md)。后续重点是分析 Qwen 过度弃权、在不降低证据校验标准的前提下开展 Prompt 对照，再与真实视觉感知链路集成。
 
 ## 系统结构（视频流优先）
 
