@@ -134,10 +134,11 @@ Choose exactly one action from evidence already captured:
   or a previously passed location; parity/numbering remains a hypothesis.
 - INSUFFICIENT_EVIDENCE: no defensible directional preference is supported.
 
-Example: target EB104; observed EB102 at door02 and EB103 at door03,
-both multi-frame consistent. EB104 itself has NOT been observed, so
-VERIFY_TARGET is FORBIDDEN. A tentative CONTINUE_ALONG_SEGMENT may
-be appropriate if the local sequence supports it.
+Illustrative example (NOT an evaluation fixture): target CD215; observed
+CD213 at door07 and CD214 at door08, both multi-frame consistent.
+CD215 itself has NOT been observed, so VERIFY_TARGET is FORBIDDEN.
+A tentative CONTINUE_ALONG_SEGMENT may be appropriate if the local
+sequence supports it.
 
 Respect the program-computed permissions below. If
 found_authorized=false, never output FOUND. If
