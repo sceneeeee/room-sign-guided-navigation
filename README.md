@@ -59,6 +59,14 @@ Run the Gradio app on the remote GPU host and access it from a MacBook through `
 
 Robot integration (Frogbot/SLAM/Nav2) and depth sensing are **out of scope for the current phase**.
 
+## Team responsibilities and live field debugging
+
+- **Member A — reasoning and evaluation:** design `LandmarkMemory`, implement numbering-rule and VLM planning baselines, define next-observation actions, and evaluate search efficiency and failure cases.
+- **Member B — perception and on-site testing:** own photo/recorded-video/live-camera acquisition, door/doorplate detection and OCR validation; **lead real-world corridor tests** with a USB RGB camera and MacBook connected over SSH to the remote GPU computer. During **live video-stream debugging**, use **Codex as an interactive coding assistant** to inspect errors/logs, edit capture and inference scripts, adjust processing parameters, rerun the pipeline, and immediately verify changes on the next observation.
+- **Joint responsibilities:** agree on the observation JSON contract, connect perception outputs to the reasoning module, review field-test failures, and maintain reproducible experiment records.
+
+**Field-test iteration (planned):** camera capture → remote inference → inspect recognized labels, latency and failures → Member B uses Codex to propose/implement a code adjustment → rerun and verify → record the code version and result. Codex assists development **during** testing; it is **not** the navigation agent and does not automatically control the camera or change the running system without the operator's review. Live video integration and this Codex-assisted workflow are planned, not yet validated.
+
 ## Links
 
 - [ReasonNav — Human-like Navigation in a World Built for Humans](https://reasonnav.github.io/) (CoRL 2025)
