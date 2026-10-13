@@ -1,4 +1,4 @@
-# M2.3：可替换 LLM Planner 的开发规格（待实现）
+# M2.3：可替换 LLM Planner 的开发规格（M2.3a 已实现）
 
 > **范围：** 人持 RGB 相机实验的**文本高层搜索策略**。先让 LLM 基于 `LandmarkMemory` 的结构化观测选择下一处观察动作，与 M2.2 的规则方法比较；M2.3 不接实机、不训练模型、暂不引入图像。
 
@@ -75,5 +75,68 @@
 - 与原有 45 项测试兼容，`python -m unittest discover -s tests -v` 全部通过。
 
 此阶段不要求 LLM 比规则更聪明，**先证明接口可测试、可替换、安全而且不会虚构已经找到房间**。等 M2.3a 通过后，再接真实模型，不应把 FakeModel 的测试视为模型效果实验。
+
+## 6. M2.3a 离线使用与结果记录
+
+本轮新增 `llm_backend.py` 的 `TextModel` 协议及 `FakeModel`，没有真实 API 适配器、模型下载或 GPU 依赖。替换后端只需提供 `backend`、`model` 和 `generate(system_prompt=..., user_prompt=..., timeout_s=...) -> str`。Prompt 的约束放在独立 system message 中，观测与指示牌原文仅进入 JSON user message，作为不可信数据。
+
+在项目根目录运行全部测试。若已有按 README 安装本项目的虚拟环境，优先明确调用它的解释器（不需要重新安装 vision/ui）：
+
+```bash
+.venv/bin/python -m unittest discover -s tests -v
+```
+
+没有安装本项目包的 Python 环境，可以直接指定源码路径；两种方法都应导入当前仓库的 `src/roomnav`：
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -v
+```
+
+冻结一个已观察的实验步，分别交给 LLM 和规则对照：
+
+```python
+import json
+
+from roomnav.llm_backend import FakeModel
+from roomnav.llm_planner import LLMPlanner, build_evidence_snapshot, decide_rule
+from roomnav.memory import LandmarkMemory
+from roomnav.observation import Observation
+
+memory = LandmarkMemory()
+for door, label in (("A:d2", "EB102"), ("A:d3", "EB103")):
+    for frame in range(2):
+        memory.add(Observation(
+            kind="room", text=label, segment_id="A", landmark_id=door,
+            observation_id=f"{door}:{frame}",
+        ))
+
+snapshot = build_evidence_snapshot("EB104", memory, segment_id="A")
+fake = FakeModel(response=json.dumps({
+    "action": "CONTINUE_ALONG_SEGMENT",
+    "reason": "Tentatively continue observing along this corridor.",
+    "assumptions": ["The local numbering trend may continue."],
+    "uncertainties": ["The target has not been independently confirmed."],
+    "evidence_landmark_ids": ["A:d2", "A:d3"],
+}))
+result = LLMPlanner(fake, timeout_s=1.0).plan_snapshot(snapshot)
+rule = decide_rule(snapshot)
+print(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
+assert not result.fallback_used
+assert result.decision.action == rule.action == "CONTINUE_ALONG_SEGMENT"
+```
+
+也可以调用 `LLMPlanner(fake).plan(target, memory, segment_id=...)`，在调用后端前自动生成快照。快照保留全部已有走廊的观测、原始指示牌文字、显式关联、首次关联顺序、投票、冲突、左右侧及最新人工确认；直接构造 `EvidenceSnapshot` 也会复制输入容器和观测/确认对象，导出的字典和 Memory 都是独立副本。**调用方必须按实验步骤逐条加入已观察证据，不能预先装载未来 episode**；快照不会按时间戳回溯过滤，Memory 目前也没有确认事件时间和完整确认历史。Memory 的更新与快照捕获应由调用方串行执行，本轮未给既有 Memory 增加并发事务或锁。
+
+解析器要求五个必需字段且不允许额外字段（包括模型自报的 `facts`、坐标和路线）、重复 JSON 键、非标准 NaN/Infinity、非法动作和非字符串数组。`Decision.facts` 只由本地快照生成。`FOUND` 必须引用已人工确认的目标地标，允许引用其他走廊的历史目标确认，与 M2.2 相同；其他动作只能引用当前走廊地标。`VERIFY_TARGET` 必须引用当前走廊中未确认、多帧一致且无 OCR/侧别冲突的目标门牌。
+
+验证多帧时，两个不同的 `frame_id` 可以支持多帧；否则需要全部观测都有时间戳，再按不同 `timestamp_s` 区分。同一 frame ID 对应的多个时间戳仍归为一帧，没有 frame ID 但与已知帧时间戳相同的读数不会再次计数。多条观测不能仅靠不同 `observation_id` 升级为多帧证据；混合且不完整的来源元数据也不能补足帧数。若 M2.2 回退仍建议 `VERIFY_TARGET`，planner 会将不符合这一约束的结果降为 `REOBSERVE`，并额外记录 `fallback_verify_not_supported`；独立 `decide_rule(snapshot)` 保留原有基线行为。仅当整个地标的观测都缺少 frame ID/时间戳时，才为兼容旧日志将每条观测作为一次记录处理；来源是否真的不同无法从旧数据证明，因此这类证据仍需人工确认。
+
+`PlannerResult` 记录 `decision`、`backend`、`model`、`fallback_used`、`validation_errors`、`error_kind` 和 `elapsed_s`（模型调用及解析校验耗时）。格式或校验错误、后端异常和超时都会显式记录，并使用**同一快照**的 M2.2 决策回退；即使回退动作恰好相同，也不能计入 LLM 成功。`strict=True` 时改为抛出带同类诊断的 `PlannerError`。异常诊断使用固定错误码，不打印后端异常原文或原始模型输出，避免将密钥或敏感载荷带入日志。
+
+超时同时传给后端，并由 planner 限制等待时间；参数必须为正数且不超过平台的 `threading.TIMEOUT_MAX`，超时后的迟到结果不会被采用。每个后端对象在整个进程中最多运行一个调用，所有 planner 共用最多 **4 个**后台调用名额；超时后保留名额，直到原调用真正退出。重复或并发调用被阻止时记录 `backend_busy`，名额耗尽时记录 `backend_capacity_exhausted`，并正常显式回退或在严格模式抛错；线程启动失败也记录后端异常并释放名额。这样可以限制线程增长，但 Python 仍不能强制终止挂住的线程：若全部 4 个调用永久挂起，将持续回退。后端不得在 `generate()` 内递归调用 planner，未来真实后端仍须设置自身传输超时。
+
+Prompt 与 schema 不能证明自由文本 `reason`、`assumptions`、`uncertainties` 的真实性，展示时应保留其模型建议身份；程序端保证的是事实来源和动作权限，真实模型的提示注入鲁棒性与搜索效果仍待 M2.3b 验证。这里的人工确认来源是受信任的 Python 应用调用，不是身份认证或防止恶意应用代码修改 Memory 的安全边界。
+
+审查时曾复现手动脚本的 `AssertionError`：它把 `git diff --no-index --check /dev/null <新增文件>` 的退出码强制断言为 0。在本机该命令没有输出任何空白错误，但因为文件有差异仍返回 1；这不是 planner 缺陷。检查此类命令应同时接受正常差异退出码 1，并要求 stdout/stderr 没有空白错误诊断。包含未跟踪文件的 diff 统计也必须采用 `--no-index` 或临时目录比较，普通 `git diff --stat` 不会包含它们。
 
 参考：[ReasonNav 源码](https://github.com/ReasonNav/ReasonNav)、[M2.2 规则基线](m2-rule-reasoning.zh-CN.md)。
