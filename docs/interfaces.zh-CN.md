@@ -23,7 +23,7 @@
 - `frame_id`：对应照片/视频帧的追溯标识，不保存个人信息。
 - `kind`: `room` 或 `sign`；方向牌可以保存原始文本如 `EB100-120 ->`，解析待实现。
 
-建议后续新增 `detector_bbox`、`ocr_bbox`、`observation_id`、`image_quality` 和 `camera_source`，但不要把新字段当成已实现功能。
+`observation_id` 与 `landmark_id` 已实现为可选字段；`detector_bbox`、`ocr_bbox`、`image_quality` 和 `camera_source` 仍待实现。
 
 ## Reasoning -> Human
 
@@ -38,7 +38,7 @@
 
 控制输出属于**人的行动建议**，不是 ROS 2 `NavigateToPose` 指令。
 
-动作集合：`FOUND`、`CONTINUE_ALONG_SEGMENT`、`CHECK_MISSING_OR_OTHER_SIDE`、`INSUFFICIENT_EVIDENCE`。
+动作集合：`FOUND`、`VERIFY_TARGET`、`REOBSERVE`、`CONTINUE_ALONG_SEGMENT`、`CHECK_MISSING_OR_OTHER_SIDE`、`INSUFFICIENT_EVIDENCE`。只有明确记录的人工确认才会得到 `FOUND`；重复 OCR 疑似目标返回 `VERIFY_TARGET`。
 
 ## M2.1 补充：原始观测与地标关联
 
@@ -74,6 +74,20 @@
 
 这里的 `candidate_text` 只是 OCR 票数最多的候选文本，不等于已经确认的真实房间编号。票数相同时返回 `null`；`consistent` 也仅指多次识别输出一致，不是人工核实。左右侧的定义必须使用一致的走廊参考方向；返回时观察方向反转应标注 `unknown` 或统一坐标规则。
 
-**M2.2 重要待办：** 当前独立规则基线仍通过 `rooms()` 读取原始观测，尚未按上述冲突状态筛选证据。接入实时 OCR 搜索之前，必须让 Planner 区分原始观测、候选地标与确认事实，不能将噪声 OCR 直接当作目标已找到。
+**M2.2 已实现：** 规则基线已改为只依赖显式关联地标的候选或人工确认结果形成编号趋势；遇到 OCR 冲突时要求复查。视频流与规则模块尚未直接相连。
 
 参考：[M2.1 设计与预训练模型复用](m2-memory.zh-CN.md)。
+
+## M2.2 补充：人工确认与可审查的决策
+
+操作员确认作为额外的 JSONL 事件输入（不是 OCR 自动产生）：
+
+```json
+{"landmark_id":"corridor_A:door04","text":"EB104","confirmed_by":"operator"}
+```
+
+使用 `memory.confirm_label("corridor_A:door04","EB104")` 记录。此操作**不改写**历史 OCR 文字。当前仅保留地标的**最新确认**，尚未实现确认事件的全量审计。
+
+`Decision.to_dict()` 包含 `action`、`reason`、`facts`、`assumptions`、`uncertainties` 和 `evidence_landmark_ids`；命令行额外输出目标及样本数量。`facts` 指真实发生的观测/人工确认事件，不能把未知目标位置写成既定事实。
+
+[完整规则、局限和示例命令](m2-rule-reasoning.zh-CN.md)。

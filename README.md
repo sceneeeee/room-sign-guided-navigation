@@ -21,7 +21,7 @@ Door / room-label detection + multi-frame confirmation [M1 planned]
            ↓
 RoomObservation → LandmarkMemory                      [minimal scaffold; integration pending]
            ↓
-Room-number rules / VLM planning → next observation   [rules isolated; VLM planned]
+Evidence-aware rules / VLM planner → next observation [M2.2 implemented separately; VLM planned]
            ↓
 Human follows suggestion and captures more evidence    [M3 planned]
 ~~~
@@ -56,13 +56,13 @@ roomnav-baseline --target EB104 --observations examples/observations_eb.jsonl
 python -m unittest discover -s tests -v
 ~~~
 
-The webcam demo does **not** yet implement door detection, room-number validation, tracking/deduplication, VLM reasoning or navigation. See [setup instructions](docs/setup.zh-CN.md).
+The webcam demo does **not** yet implement door detection, room-number validation, tracking/deduplication, VLM reasoning or navigation. The independent M2.2 CLI handles OCR conflicts and separates facts, assumptions and uncertainties. See [setup instructions](docs/setup.zh-CN.md).
 
 ## Video-first milestones
 
 1. **M0 — Live feed:** MacBook webcam → Gradio frame samples → SSH → remote OCR → displayed output. Starter implemented; real-world validation pending.
 2. **M1 — Video recognition:** detect doorplates, read full alphanumeric labels, confirm across frames, reject ambiguities and deduplicate.
-3. **M2 — Landmark memory + reasoning:** feed confirmed observations into memory; compare numbering rules vs VLM suggestions on the same evidence.
+3. **M2 — Landmark memory + reasoning:** M2.1 association memory and M2.2 evidence-aware rule baseline are implemented in an independent CLI; live-video integration and VLM planning remain planned.
 4. **M3 — Human-in-the-loop field search:** person follows model suggestions; Member B leads on-site testing and Codex-assisted debugging.
 5. **M4 — Controlled evaluation:** compare sequential-door search, numbering heuristics and VLM decisions (success rate, doors checked, distance/time).
 
@@ -85,6 +85,7 @@ Robot integration (Frogbot/SLAM/Nav2) and depth sensing are **out of scope for t
 - [Experiment protocol (中文)](docs/experiment.zh-CN.md)
 - [Roadmap and two-person responsibilities (中文)](docs/roadmap.zh-CN.md)
 - [Perception / reasoning interface (中文)](docs/interfaces.zh-CN.md)
+- [M2.2 evidence-aware rule baseline (中文)](docs/m2-rule-reasoning.zh-CN.md)
 
 **Research integrity:** adapting existing open-source tools is not in itself a novel algorithm. Robustness to OCR errors, irregular numbering and exploration cost is a candidate research question, not an established contribution.
 

@@ -22,7 +22,7 @@ MacBook + USB RGB 摄像头（实时视频采样）  [M0 最小代码已实现�
       ↓ 门/门牌检测、跨帧确认和去重     [M1 待开发]
 RoomObservation → Landmark Memory       [已有数据结构，待接入视频]
       ↓
-编号规则 / VLM 下一步观察建议          [规则基线独立可运行；VLM 待开发]
+编号规则 / VLM 下一步观察建议          [M2.2 证据分级规则已实现；VLM 待开发]
       ↓
 人按建议行走并继续观察                [现场闭环待集成]
 ~~~
@@ -55,14 +55,14 @@ python scripts/ocr_image.py /path/to/door.jpg
 python apps/photo_demo.py
 ~~~
 
-已有规则推理基线也可独立测试：
+已实现的 **M2.2 证据分级规则基线** 可独立测试：
 
 ~~~bash
 roomnav-baseline --target EB104 --observations examples/observations_eb.jsonl
 python -m unittest discover -s tests -v
 ~~~
 
-目前现场摄像头尚未验收，且实时门检测、可信门牌编号、跨帧去重和 VLM 推理尚未集成。详细步骤见 [部署文档](docs/setup.zh-CN.md)。
+M2.1 Landmark Memory 和 M2.2 保守规则推理已在独立 CLI 中实现。现场摄像头尚未验收；门牌检测、跨帧去重、实时记忆入库和 VLM 推理仍未集成。详见 [M2.2 设计](docs/m2-rule-reasoning.zh-CN.md)。详细步骤见 [部署文档](docs/setup.zh-CN.md)。
 
 ## 视频流优先的里程碑
 
@@ -70,7 +70,7 @@ python -m unittest discover -s tests -v
 | --- | --- | --- |
 | **M0 · 实时视频接入** | MacBook USB 摄像头 → Gradio 采样 → SSH → GPU OCR → 返回文本 | 流式上传和远程识别跑通，测量实际采样与延迟（原型代码已有，实测待做） |
 | **M1 · 门牌实时识别** | 自动发现门/门牌，读取 EB104 等完整编号，多帧确认、同门去重 | 输出可核验的门牌编号并保存失败样本 |
-| **M2 · 地标记忆和推理** | 结构化观测接入 Landmark Memory，加入编号规则和 VLM 决策 | 根据已见编号生成下一步观察建议 |
+| **M2 · 地标记忆和推理** | M2.1 关联记忆、M2.2 证据规则基线已实现；VLM 和视频流接入待开发 | 独立输出有事实/假设/不确定性的搜索建议，完整闭环未验收 |
 | **M3 · 线下人机闭环** | 人在走廊移动，按系统建议检查门牌；Codex 辅助现场调试 | 完成未知房间搜索并留存日志 |
 | **M4 · 对照评估** | 对比逐门搜索、局部编号规则、VLM | 搜索成功率、查看门数、行走距离和耗时 |
 
@@ -81,7 +81,7 @@ python -m unittest discover -s tests -v
 ## 两个人的分工
 
 - **成员 A（你）｜推理与评估：** 负责 Landmark Memory、门牌编号规则基线、VLM 高层推理、下一步观察动作选择，以及逐门搜索 / 规则 / VLM 的对照实验设计与结果分析。
-- **成员 B（队友）｜视觉感知与线下测试：** 以 **USB RGB 摄像头实时视频流接入（M0）**及线下测试为首要任务，随后负责门牌检测、OCR、跨帧去重，照片与录像用于回归；完成门 / 门牌检测、OCR、跨帧去重及感知指标统计；主导 **MacBook + SSH + 远程 GPU** 的线下联调。
+- **成员 B（队友）｜视觉感知与线下测试：** 以 **USB RGB 摄像头实时视频流接入（M0）**及线下测试为首要任务，随后负责门牌检测、OCR、跨帧去重，照片与录像用于回归，负责感知指标统计；主导 **MacBook + SSH + 远程 GPU** 的线下联调。
 - **成员 B 的 Codex 辅助现场调试：** 在实时视频流的线下测试过程中使用 **Codex** 辅助阅读日志、定位识别或取流问题、修改采集与推理代码、调整参数、重新运行并即时验证。每次改动应保留可复现的版本与测试记录，重要改动经人工确认后再应用。
 - **共同：** 统一感知输出与推理输入的 JSON 接口、集成端到端人机交互流程，并复盘失败案例。
 
@@ -94,6 +94,7 @@ python -m unittest discover -s tests -v
 - [实验设计](docs/experiment.zh-CN.md)
 - [路线与分工](docs/roadmap.zh-CN.md)
 - [模块接口](docs/interfaces.zh-CN.md)
+- [M2.2 基于证据的规则推理](docs/m2-rule-reasoning.zh-CN.md)
 - [环境部署与 SSH](docs/setup.zh-CN.md)
 
 目前的算法价值首先是**可验证的工程复现与实验对照**，不是声称原创了 OCR+VLM 找房间；OCR 误读、跳号、编号规则不一致以及主动重复观察属于后续需进一步查新验证的研究方向。
