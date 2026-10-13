@@ -32,3 +32,6 @@
 ## 研究与复现边界
 
 主要参考 [ReasonNav (CoRL 2025)](https://reasonnav.github.io/) 和 [官方代码](https://github.com/ReasonNav/ReasonNav)。本项目首先验证视觉文字观测与高层搜索策略，尚非完整机器人复现。OCR 错误、跳号和冲突编号条件下的主动搜索属于需进一步文献核验的候选研究问题。
+ 
+
+**M2.3 开发规格：** [可替换 LLM Planner 的接口、约束与验收标准](m2-llm-planner.zh-CN.md)。此阶段仍为计划，未实现或完成真实模型测试。
