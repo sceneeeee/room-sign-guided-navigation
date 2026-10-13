@@ -20,6 +20,7 @@ development = ["pytest>=8.0"]
 [project.scripts]
 roomnav-baseline = "roomnav.cli:main"
 roomnav-llm = "roomnav.llm_cli:main"
+roomnav-evaluate = "roomnav.eval_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

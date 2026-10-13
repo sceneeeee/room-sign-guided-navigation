@@ -1,6 +1,6 @@
 # Room & Sign-Guided Indoor Navigation
 
-[中文说明](README.zh-CN.md) · **Status: initial research scaffold — no validated results yet**
+[中文说明](README.zh-CN.md) · **Status: M2 text planning and frozen offline evaluation; field validation pending**
 
 An **RGB-first, human-in-the-loop** testbed for reading room numbers and signage and reasoning about where to search for a room whose location is unknown.
 
@@ -62,7 +62,7 @@ The webcam demo does **not** yet implement door detection, room-number validatio
 
 1. **M0 — Live feed:** MacBook webcam → Gradio frame samples → SSH → remote OCR → displayed output. Starter implemented; real-world validation pending.
 2. **M1 — Video recognition:** detect doorplates, read full alphanumeric labels, confirm across frames, reject ambiguities and deduplicate.
-3. **M2 — Landmark memory + reasoning:** M2.1 memory, M2.2 evidence-aware rules, M2.3a constrained LLM planner and the M2.3b OpenAI-compatible text backend are implemented; real Qwen serving, live-video integration and VLM experiments remain unvalidated.
+3. **M2 — Landmark memory + reasoning:** M2.1–M2.3b are implemented, with three local Ollama/Qwen decisions reported. M2.3c adds 20 frozen corridor snapshots with independent action oracles and offline policy evaluation; live-video integration, VLM and field search remain pending.
 4. **M3 — Human-in-the-loop field search:** person follows model suggestions; Member B leads on-site testing and Codex-assisted debugging.
 5. **M4 — Controlled evaluation:** compare sequential-door search, numbering heuristics and VLM decisions (success rate, doors checked, distance/time).
 
@@ -87,6 +87,7 @@ Robot integration (Frogbot/SLAM/Nav2) and depth sensing are **out of scope for t
 - [Perception / reasoning interface (中文)](docs/interfaces.zh-CN.md)
 - [M2.2 evidence-aware rule baseline (中文)](docs/m2-rule-reasoning.zh-CN.md)
 - [M2.3b OpenAI-compatible text inference setup (中文)](docs/m2-llm-serving.zh-CN.md)
+- [M2.3c frozen offline policy evaluation (中文)](docs/m2-offline-evaluation.zh-CN.md)
 
 **Research integrity:** adapting existing open-source tools is not in itself a novel algorithm. Robustness to OCR errors, irregular numbering and exploration cost is a candidate research question, not an established contribution.
 

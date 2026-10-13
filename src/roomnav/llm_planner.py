@@ -359,9 +359,26 @@ class PlannerResult:
     validation_errors: tuple[str, ...]
     elapsed_s: float
     error_kind: str | None = None
+    # Telemetry only: a recognized action can still fail evidence validation.
+    requested_action: RoomAction | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+
+def _requested_action(response: object) -> RoomAction | None:
+    """Retain only a canonical action for evaluation, never raw rejected text."""
+    if not isinstance(response, str):
+        return None
+    try:
+        data = json.loads(
+            response, object_pairs_hook=_unique_object, parse_constant=_reject_constant
+        )
+    except (ValueError, RecursionError):
+        return None
+    if isinstance(data, dict) and isinstance(data.get("action"), str) and data["action"] in get_args(RoomAction):
+        return cast(RoomAction, data["action"])
+    return None
 
 
 class PlannerError(RuntimeError):
@@ -466,11 +483,14 @@ class LLMPlanner:
         backend, model = self.model.backend, self.model.model
         started = time.monotonic()
         error_kind, response = _call_model(self.model, system_prompt, user_prompt, self.timeout_s)
+        requested_action = None
         errors: tuple[str, ...] = ()
         if error_kind is None:
             try:
                 decision = parse_decision(response, snapshot)
+                requested_action = decision.action
             except DecisionValidationError as error:
+                requested_action = _requested_action(response)
                 error_kind, errors = "validation_error", error.errors
         else:
             errors = (_BACKEND_ERROR_CODES[error_kind],)
@@ -487,4 +507,5 @@ class LLMPlanner:
             decision=decision, backend=backend, model=model,
             fallback_used=error_kind is not None, validation_errors=errors,
             elapsed_s=elapsed_s, error_kind=error_kind,
+            requested_action=requested_action,
         )
