@@ -1,6 +1,6 @@
 # Room & Sign-Guided Indoor Navigation
 
-[中文说明](README.zh-CN.md) · **Status: M2 text planning and frozen offline evaluation; field validation pending**
+[中文说明](README.zh-CN.md) · **Status: M2.1–M2.3c completed in development; 20-case text-LLM comparison recorded; field validation pending**
 
 An **RGB-first, human-in-the-loop** testbed for reading room numbers and signage and reasoning about where to search for a room whose location is unknown.
 
@@ -9,6 +9,16 @@ An **RGB-first, human-in-the-loop** testbed for reading room numbers and signage
 Can an agent use **previously observed** room labels, directional signage and lightweight topological notes to search for a target room more efficiently than simply checking doors one by one?
 
 The initial prototype is **not a mobile-robot deployment**. A person carries a phone/USB RGB camera; a MacBook presents the experiment and may connect to a remote GPU computer via SSH. The system recognizes text, records landmarks and suggests the next place to observe. The person executes the decision.
+
+## Development snapshot — 2026-10-14
+
+**Branch boundary:** The default `main` branch contains the M0 webcam/RapidOCR starter and early reasoning scaffolding. M2.1–M2.3c are implemented on [`feat/m2-reasoning`](https://github.com/sceneeeee/room-sign-guided-navigation/tree/feat/m2-reasoning) and **have not been merged into `main`**. The M2 commands and experiments below refer to the feature branch, not to executable features on `main`.
+
+- **Implemented on the feature branch:** landmark/evidence memory (M2.1), evidence-aware rule baseline (M2.2), constrained text-LLM planning and fallback (M2.3a), local Ollama/Qwen3-4B integration (M2.3b), and a 20-scenario frozen single-step policy evaluator (M2.3c). The 154 unit tests passed in five consecutive local WSL runs.
+- **Recorded offline comparison (20 synthetic scenarios, Qwen3-4B-Instruct-2507 Q4_K_M, Prompt v2):** Rule-based policy had **19/20 (95%)** legal and acceptable actions, with one repeated-frame eligibility defect. Qwen had **10/20 (50%)** acceptable actions, **20/20 (100%)** legal outputs, **0** fallbacks and **17/20 (85%)** abstentions; mean model latency was about **1.89 s**.
+- **Limitations:** These are manually authored **single-step simulation** outcomes, not live corridor search success, traveled distance, or evidence that a model is superior. Field-camera integration, M1 door/sign perception and cross-frame association, the full M3/M4 loop, and VLM deployment remain incomplete. **Prompt v3 has not been developed.**
+
+See the [feature-branch M2.3c evaluation protocol](https://github.com/sceneeeee/room-sign-guided-navigation/blob/feat/m2-reasoning/docs/m2-offline-evaluation.zh-CN.md) for methodology and metrics. Future work: investigate over-abstention without relaxing evidence checks, then integrate verified perception outputs into memory and field testing.
 
 ## Architecture — video-first
 
@@ -19,9 +29,9 @@ RapidOCR returns raw scene text                      [M0, unvalidated on-site]
            ↓
 Door / room-label detection + multi-frame confirmation [M1 planned]
            ↓
-RoomObservation → LandmarkMemory                      [minimal scaffold; integration pending]
+RoomObservation → LandmarkMemory                      [M2.1 standalone; video integration pending]
            ↓
-Evidence-aware rules / VLM planner → next observation [M2.2 implemented separately; VLM planned]
+Evidence-aware rules / text LLM → next observation   [M2 standalone; VLM planned]
            ↓
 Human follows suggestion and captures more evidence    [M3 planned]
 ~~~
@@ -62,7 +72,7 @@ The webcam demo does **not** yet implement door detection, room-number validatio
 
 1. **M0 — Live feed:** MacBook webcam → Gradio frame samples → SSH → remote OCR → displayed output. Starter implemented; real-world validation pending.
 2. **M1 — Video recognition:** detect doorplates, read full alphanumeric labels, confirm across frames, reject ambiguities and deduplicate.
-3. **M2 — Landmark memory + reasoning:** M2.1–M2.3b are implemented, with three local Ollama/Qwen decisions reported. M2.3c adds 20 frozen corridor snapshots with independent action oracles and offline policy evaluation; live-video integration, VLM and field search remain pending.
+3. **M2 — Landmark memory + reasoning:** M2.1–M2.3c run standalone. A local Qwen3-4B text model was evaluated on 20 frozen corridor snapshots against the rule baseline; Prompt v3, live-video integration, VLM and field search remain pending.
 4. **M3 — Human-in-the-loop field search:** person follows model suggestions; Member B leads on-site testing and Codex-assisted debugging.
 5. **M4 — Controlled evaluation:** compare sequential-door search, numbering heuristics and VLM decisions (success rate, doors checked, distance/time).
 

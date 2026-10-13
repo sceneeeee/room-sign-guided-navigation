@@ -1,6 +1,6 @@
 # 基于门牌与指示牌的室内导航（Room & Sign-Guided Indoor Navigation）
 
-[English](README.md) · **阶段：M2 文本推理与冻结离线评估；现场验证待完成**
+[English](README.md) · **阶段：M2.1–M2.3c 已完成开发并取得 20 场景文本 LLM 对照结果；现场验证待完成**
 
 ## 核心目标
 
@@ -13,6 +13,16 @@
 1. **视觉感知：** RGB 图像能否稳定找到门牌并读取完整编号？
 2. **空间推理：** 当目标尚未出现时，基于已有编号和走廊关系，能否提高搜索效率？
 
+## 开发进度快照（2026-10-14）
+
+**分支边界：** 默认 `main` 分支目前提供 M0 摄像头/RapidOCR 原型与早期推理脚手架。**M2.1–M2.3c 的完整实现位于 [`feat/m2-reasoning`](https://github.com/sceneeeee/room-sign-guided-navigation/tree/feat/m2-reasoning)，尚未合并至 `main`。** 下述 M2 命令与实验结果属于开发分支，不能假定可在 `main` 直接运行。
+
+- **开发分支已实现：** M2.1 地标与证据记忆、M2.2 规则基线、M2.3a 受约束文本 LLM Planner/回退、M2.3b 本地 Ollama/Qwen3-4B 接入、M2.3c 20 个冻结单步场景与策略评估；**154 项单元测试在本地 WSL 连续五轮通过**。
+- **已完成的离线对照（20 个模拟场景，Qwen3-4B-Instruct-2507 Q4_K_M，Prompt v2）：** Rule-based **19/20（95%）**动作合法且可接受（同帧重复计数有 1 个已知问题）；Qwen **10/20（50%）**可接受、**20/20（100%）**合法、**0 次** fallback、**17/20（85%）**选择弃权，平均推理延迟约 **1.89 秒**。
+- **尚未完成：** 结果仅针对人工设计的**单步模拟场景**，不代表真实寻房成功率；M0 现场链路验收、M1 门牌检测/跨帧关联、M2 与视频流集成、M3/M4 现场闭环及 VLM 部署均未完成。**Prompt v3 尚未开发。**
+
+详见[开发分支 M2.3c 评估文档](https://github.com/sceneeeee/room-sign-guided-navigation/blob/feat/m2-reasoning/docs/m2-offline-evaluation.zh-CN.md)。后续重点是分析 Qwen 过度弃权、在不降低证据校验标准的前提下开展 Prompt 对照，再与真实视觉感知链路集成。
+
 ## 系统结构（视频流优先）
 
 ~~~text
@@ -22,7 +32,7 @@ MacBook + USB RGB 摄像头（实时视频采样）  [M0 最小代码已实现�
       ↓ 门/门牌检测、跨帧确认和去重     [M1 待开发]
 RoomObservation → Landmark Memory       [已有数据结构，待接入视频]
       ↓
-编号规则 / LLM 高层搜索建议            [三次本地 Qwen 决策；M2.3c 离线评估已实现]
+编号规则 / LLM 高层搜索建议            [本地 Qwen 20 场景对照已完成]
       ↓
 人按建议行走并继续观察                [现场闭环待集成]
 ~~~
@@ -62,7 +72,7 @@ roomnav-baseline --target EB104 --observations examples/observations_eb.jsonl
 python -m unittest discover -s tests -v
 ~~~
 
-M2.1–M2.3b 已实现，并已获得三次本地 Ollama/Qwen 决策结果。M2.3c 新增 20 个冻结走廊场景、独立可接受动作集合及离线评估 CLI，默认只运行 Rule；[评估文档](docs/m2-offline-evaluation.zh-CN.md)包含运行方式与指标定义。现场摄像头、门牌检测、跨帧去重、实时记忆入库和 VLM 仍未集成。详细步骤见 [部署文档](docs/setup.zh-CN.md)。
+M2.1–M2.3c 已实现，使用本地 Ollama/Qwen3-4B 在 20 个冻结走廊场景中完成与 Rule-based 的真实调用对照；评估 CLI 默认只运行 Rule，[评估文档](docs/m2-offline-evaluation.zh-CN.md)包含运行方式与指标定义。现场摄像头、门牌检测、跨帧去重、实时记忆入库和 VLM 仍未集成。详细步骤见 [部署文档](docs/setup.zh-CN.md)。
 
 ## 视频流优先的里程碑
 
@@ -70,7 +80,7 @@ M2.1–M2.3b 已实现，并已获得三次本地 Ollama/Qwen 决策结果。M2.
 | --- | --- | --- |
 | **M0 · 实时视频接入** | MacBook USB 摄像头 → Gradio 采样 → SSH → GPU OCR → 返回文本 | 流式上传和远程识别跑通，测量实际采样与延迟（原型代码已有，实测待做） |
 | **M1 · 门牌实时识别** | 自动发现门/门牌，读取 EB104 等完整编号，多帧确认、同门去重 | 输出可核验的门牌编号并保存失败样本 |
-| **M2 · 地标记忆和推理** | M2.1–M2.3b 实现，三次本地 Qwen 决策；M2.3c 冻结离线评估 | 20 个独立判定场景及 Rule 评估已运行，真实楼层效果尚未评估 |
+| **M2 · 地标记忆和推理** | M2.1–M2.3c 完成独立实现，20 个冻结场景与真实本地 Qwen 对照 | Rule 19/20、Qwen 10/20 可接受；Prompt v3 和真实楼层验证未完成 |
 | **M3 · 线下人机闭环** | 人在走廊移动，按系统建议检查门牌；Codex 辅助现场调试 | 完成未知房间搜索并留存日志 |
 | **M4 · 对照评估** | 对比逐门搜索、局部编号规则、VLM | 搜索成功率、查看门数、行走距离和耗时 |
 
