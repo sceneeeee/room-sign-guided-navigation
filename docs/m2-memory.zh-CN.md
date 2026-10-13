@@ -29,7 +29,7 @@
 python -m unittest discover -s tests -v
 ```
 
-可通过 `memory.to_reasoning_context()` 查看 JSON 化的地标候选和冲突状态。该摘要现已由 M2.2 独立规则基线使用，并包含可选人工确认信息；尚未与实时视频界面或 M2.3 VLM 连接。见 [M2.2 设计](m2-rule-reasoning.zh-CN.md)。
+可通过 `memory.to_reasoning_context()` 查看 JSON 化的地标候选和冲突状态。该摘要已包含可选人工确认信息；M2.2 规则基线当前直接读取 Memory 的地标和人工确认 API，而不是直接读取此 JSON 摘要。JSON 摘要可供后续 M2.3 模型使用，尚未与实时视频界面连接。见 [M2.2 设计](m2-rule-reasoning.zh-CN.md)。
 
 ## 复用预训练模型，不从零训练
 
