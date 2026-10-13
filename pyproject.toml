@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "roomnav"
+version = "0.1.0"
+description = "RGB-first, human-in-the-loop, room-number and signage-guided indoor search research scaffold"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "RoomNav contributors"}]
+license = {text = "Proprietary - license not yet selected"}
+dependencies = []
+
+[project.optional-dependencies]
+vision = ["rapidocr>=3.0", "onnxruntime>=1.17", "pillow>=10"]
+ui = ["gradio>=5.0"]
+development = ["pytest>=8.0"]
+
+[project.scripts]
+roomnav-baseline = "roomnav.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

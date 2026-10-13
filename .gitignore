@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# Local secrets / IDE
+.env
+.env.*
+!.env.example
+.DS_Store
+.vscode/
+.idea/
+
+# Sensitive or large experiment data: keep only public examples
+/data/*
+!/data/README.md
+/outputs/
+/logs/
+/checkpoints/
+*.onnx
+*.pt
+*.pth
+*.mp4
+*.mov
+*.mkv
+*.heic
+
+# Scratch
+/temp_report.md
