@@ -57,6 +57,7 @@ class LLMCLITests(unittest.TestCase):
         self.assertFalse(result["llm_result"]["fallback_used"])
         self.assertTrue(result["action_agrees_with_rule"])
         self.assertEqual(result["observation_count"], 4)
+        self.assertEqual(result["prompt_version"], "m2.3b-action-guide-v2")
         self.assertIsNone(result["usage"])
         self.assertEqual(len(fake.calls), 1)
 

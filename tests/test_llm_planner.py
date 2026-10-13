@@ -660,5 +660,65 @@ class EvidenceSnapshotTests(unittest.TestCase):
                 build_evidence_snapshot("EB104", memory, segment_id=segment)
 
 
+
+class ActionGuidePromptTests(unittest.TestCase):
+    """Only the two privileged actions are gated; rule actions remain unseen."""
+
+    def guide(self, memory, *, segment="A"):
+        snapshot = build_evidence_snapshot("EB104", memory, segment_id=segment)
+        system, user = build_prompt(snapshot)
+        self.assertEqual(json.loads(user), snapshot.to_dict())
+        self.assertIn("VERIFY_TARGET is FORBIDDEN", system)
+        return system
+
+    def test_neighboring_consistent_rooms_do_not_authorize_verification(self):
+        memory = LandmarkMemory()
+        stable(memory, "A:d2", "EB102")
+        stable(memory, "A:d3", "EB103")
+        system = self.guide(memory)
+        self.assertIn("found_authorized: false", system)
+        self.assertIn("verify_target_authorized: false", system)
+        self.assertEqual(decide_rule(build_evidence_snapshot("EB104", memory)).action,
+                         "CONTINUE_ALONG_SEGMENT")
+
+    def test_multi_frame_target_allows_verification_but_not_found(self):
+        memory = LandmarkMemory()
+        stable(memory, "A:d4", "EB104")
+        system = self.guide(memory)
+        self.assertIn("found_authorized: false", system)
+        self.assertIn("verify_target_authorized: true", system)
+
+    def test_operator_confirmation_allows_found(self):
+        memory = LandmarkMemory()
+        stable(memory, "A:d4", "EB104")
+        memory.confirm_label("A:d4", "EB104")
+        system = self.guide(memory)
+        self.assertIn("found_authorized: true", system)
+        self.assertIn("verify_target_authorized: false", system)
+
+    def test_cross_corridor_candidate_is_not_current_verification(self):
+        memory = LandmarkMemory()
+        stable(memory, "B:d4", "EB104", segment="B")
+        system = self.guide(memory, segment="A")
+        self.assertIn("verify_target_authorized: false", system)
+        self.assertIn("found_authorized: false", system)
+
+    def test_single_or_unassociated_target_not_eligible(self):
+        for observations in ([room("EB104", None)], [room("EB104", "A:d4")]):
+            with self.subTest(observations=observations):
+                self.assertIn("verify_target_authorized: false",
+                              self.guide(LandmarkMemory(observations)))
+
+    def test_flags_do_not_leak_later_confirmations(self):
+        memory = LandmarkMemory()
+        stable(memory, "A:d2", "EB102")
+        snapshot = build_evidence_snapshot("EB104", memory)
+        stable(memory, "A:d4", "EB104")
+        memory.confirm_label("A:d4", "EB104")
+        system, _ = build_prompt(snapshot)
+        self.assertIn("found_authorized: false", system)
+        self.assertIn("verify_target_authorized: false", system)
+
+
 if __name__ == "__main__":
     unittest.main()

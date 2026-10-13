@@ -8,7 +8,7 @@ import argparse
 import json
 from pathlib import Path
 
-from .llm_planner import LLMPlanner, PlannerError, build_evidence_snapshot, decide_rule
+from .llm_planner import PROMPT_VERSION, LLMPlanner, PlannerError, build_evidence_snapshot, decide_rule
 from .memory import LandmarkMemory
 from .observation import Observation
 from .openai_compatible import OpenAICompatibleModel
@@ -68,6 +68,7 @@ def run(args: argparse.Namespace) -> dict:
     rule = decide_rule(snapshot)
     record = {
         "phase": "M2.3b",
+        "prompt_version": PROMPT_VERSION,
         "mode": "dry-run" if args.dry_run else "openai-compatible",
         "target": snapshot.target,
         "active_segment": snapshot.active_segment,
