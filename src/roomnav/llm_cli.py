@@ -8,6 +8,7 @@ import argparse
 import json
 from pathlib import Path
 
+from .baseline import RULE_VERSION
 from .llm_planner import (
     PROMPT_VERSIONS, LLMPlanner, PlannerError, build_evidence_snapshot, decide_rule,
     resolve_prompt_version,
@@ -74,6 +75,7 @@ def run(args: argparse.Namespace) -> dict:
     record = {
         "phase": "M2.3b",
         "prompt_version": resolve_prompt_version(args.prompt_version),
+        "rule_version": RULE_VERSION,
         "mode": "dry-run" if args.dry_run else "openai-compatible",
         "target": snapshot.target,
         "active_segment": snapshot.active_segment,

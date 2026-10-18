@@ -1,6 +1,6 @@
 # Room & Sign-Guided Indoor Navigation
 
-[中文说明](README.zh-CN.md) · **Status: M2.3d Prompt v3 implemented; strategy goals partly unmet; human acceptance pending**
+[中文说明](README.zh-CN.md) · **Status: M2.4 rule-only streaming implemented; M1 field integration pending**
 
 An **RGB-first, human-in-the-loop** testbed for reading room numbers and signage and reasoning about where to search for a room whose location is unknown.
 
@@ -12,14 +12,19 @@ The initial prototype is **not a mobile-robot deployment**. A person carries a p
 
 ## Development snapshot — 2026-10-18
 
-**Branch boundary:** The default `main` branch contains the M0 webcam/RapidOCR starter and early reasoning scaffolding. M2.1–M2.3c are implemented on [`feat/m2-reasoning`](https://github.com/sceneeeee/room-sign-guided-navigation/tree/feat/m2-reasoning) and **have not been merged into `main`**. The M2 commands and experiments below refer to the feature branch, not to executable features on `main`.
+**Branch boundary:** The default `main` branch contains the M0 webcam/RapidOCR starter and early reasoning scaffolding. M2.1–M2.4 are implemented on [`feat/m2-reasoning`](https://github.com/sceneeeee/room-sign-guided-navigation/tree/feat/m2-reasoning) and **have not been merged into `main`**. The M2 commands and experiments below refer to the feature branch, not to executable features on `main`.
 
 - **Implemented on the feature branch:** landmark/evidence memory (M2.1), evidence-aware rule baseline (M2.2), constrained text-LLM planning and fallback (M2.3a), local Ollama/Qwen3-4B integration (M2.3b), and a 20-scenario frozen single-step policy evaluator (M2.3c). The 154 unit tests passed in five consecutive local WSL runs.
 - **Recorded offline comparison (20 synthetic scenarios, Qwen3-4B-Instruct-2507 Q4_K_M, Prompt v2):** Rule-based policy had **19/20 (95%)** legal and acceptable actions, with one repeated-frame eligibility defect. Qwen had **10/20 (50%)** acceptable actions, **20/20 (100%)** legal outputs, **0** fallbacks and **17/20 (85%)** abstentions; mean model latency was about **1.89 s**.
 - **M2.3d development check:** Both LLM CLIs now accept `--prompt-version v2|v3`; v2 remains the default and evidence gates are unchanged. Five new Qwen development requests found one improved conflict response, continued trend failure and one rejected cross-segment response with safe fallback. These are exposed development cases, not a blind evaluation; see the [Prompt v3 report](docs/m23d-prompt-v3.zh-CN.md).
+- **M2.4 streaming:** JSONL/file or stdin events update the existing Landmark Memory and emit one Rule decision per event. Explicit operator events alone authorize FOUND. Rule version `m2.4-distinct-captures-v1` fixes repeated-frame target eligibility using the existing LLM gate; historical evaluation artifacts and both prompts remain preserved. See the [interface and corridor replay](docs/m24-streaming.zh-CN.md).
 - **Limitations:** These are manually authored **single-step simulation** outcomes, not live corridor search success, traveled distance, or evidence that a model is superior. Field-camera integration, M1 door/sign perception and cross-frame association, the full M3/M4 loop, and VLM deployment remain incomplete. Prompt v3 strategy goals are only partly met.
 
-See the [feature-branch M2.3c evaluation protocol](https://github.com/sceneeeee/room-sign-guided-navigation/blob/feat/m2-reasoning/docs/m2-offline-evaluation.zh-CN.md) for methodology and metrics. Future work: investigate over-abstention without relaxing evidence checks, then integrate verified perception outputs into memory and field testing.
+See the [feature-branch M2.3c evaluation protocol](https://github.com/sceneeeee/room-sign-guided-navigation/blob/feat/m2-reasoning/docs/m2-offline-evaluation.zh-CN.md) for methodology and historical metrics. Next: connect explicit M1 associations to the stream interface and record field observations for replay and human review.
+
+```bash
+python -m roomnav.stream_cli --target FB545 --input examples/m24_stream_demo.jsonl
+```
 
 ## Architecture — video-first
 
@@ -73,7 +78,7 @@ The webcam demo does **not** yet implement door detection, room-number validatio
 
 1. **M0 — Live feed:** MacBook webcam → Gradio frame samples → SSH → remote OCR → displayed output. Starter implemented; real-world validation pending.
 2. **M1 — Video recognition:** detect doorplates, read full alphanumeric labels, confirm across frames, reject ambiguities and deduplicate.
-3. **M2 — Landmark memory + reasoning:** M2.1–M2.3c run standalone. A local Qwen3-4B text model was evaluated on 20 frozen corridor snapshots against the rule baseline; M2.3d adds opt-in Prompt v3 with mixed development results. Further strategy work, live-video integration, VLM and field search remain pending.
+3. **M2 — Landmark memory + reasoning:** M2.1–M2.4 run standalone, including incremental Rule decisions from JSONL/stdin. A local Qwen3-4B text model was evaluated on 20 frozen corridor snapshots; opt-in Prompt v3 has mixed development results. M1 video adaptation, further strategy work, VLM and field search remain pending.
 4. **M3 — Human-in-the-loop field search:** person follows model suggestions; Member B leads on-site testing and Codex-assisted debugging.
 5. **M4 — Controlled evaluation:** compare sequential-door search, numbering heuristics and VLM decisions (success rate, doors checked, distance/time).
 
@@ -100,6 +105,7 @@ Robot integration (Frogbot/SLAM/Nav2) and depth sensing are **out of scope for t
 - [M2.3b OpenAI-compatible text inference setup (中文)](docs/m2-llm-serving.zh-CN.md)
 - [M2.3c frozen offline policy evaluation (中文)](docs/m2-offline-evaluation.zh-CN.md)
 - [M2.3d Prompt v3 development report (中文)](docs/m23d-prompt-v3.zh-CN.md)
+- [M2.4 streaming interface and Rule fix (中文)](docs/m24-streaming.zh-CN.md)
 
 **Research integrity:** adapting existing open-source tools is not in itself a novel algorithm. Robustness to OCR errors, irregular numbering and exploration cost is a candidate research question, not an established contribution.
 

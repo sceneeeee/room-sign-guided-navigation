@@ -1,6 +1,6 @@
 # 基于门牌与指示牌的室内导航（Room & Sign-Guided Indoor Navigation）
 
-[English](README.md) · **阶段：M2.3d Prompt v3 已实现，策略目标部分未达成；等待人工验收**
+[English](README.md) · **阶段：M2.4 默认 Rule 流式入口已实现；M1 现场集成待完成**
 
 ## 核心目标
 
@@ -15,14 +15,19 @@
 
 ## 开发进度快照（2026-10-18）
 
-**分支边界：** 默认 `main` 分支目前提供 M0 摄像头/RapidOCR 原型与早期推理脚手架。**M2.1–M2.3c 的完整实现位于 [`feat/m2-reasoning`](https://github.com/sceneeeee/room-sign-guided-navigation/tree/feat/m2-reasoning)，尚未合并至 `main`。** 下述 M2 命令与实验结果属于开发分支，不能假定可在 `main` 直接运行。
+**分支边界：** 默认 `main` 分支目前提供 M0 摄像头/RapidOCR 原型与早期推理脚手架。**M2.1–M2.4 的完整实现位于 [`feat/m2-reasoning`](https://github.com/sceneeeee/room-sign-guided-navigation/tree/feat/m2-reasoning)，尚未合并至 `main`。** 下述 M2 命令与实验结果属于开发分支，不能假定可在 `main` 直接运行。
 
 - **开发分支已实现：** M2.1 地标与证据记忆、M2.2 规则基线、M2.3a 受约束文本 LLM Planner/回退、M2.3b 本地 Ollama/Qwen3-4B 接入、M2.3c 20 个冻结单步场景与策略评估；**154 项单元测试在本地 WSL 连续五轮通过**。
 - **已完成的离线对照（20 个模拟场景，Qwen3-4B-Instruct-2507 Q4_K_M，Prompt v2）：** Rule-based **19/20（95%）**动作合法且可接受（同帧重复计数有 1 个已知问题）；Qwen **10/20（50%）**可接受、**20/20（100%）**合法、**0 次** fallback、**17/20（85%）**选择弃权，平均推理延迟约 **1.89 秒**。
 - **M2.3d 开发检查：** 两个 LLM CLI 支持 `--prompt-version v2|v3`，默认仍为 v2，证据校验未改。5 次新开发案例的 Qwen 请求中，v3 改善了一次冲突重观测，趋势案例仍失败，另一次跨走廊引用被拒绝并安全回退。这些不是独立盲测，见 [Prompt v3 报告](docs/m23d-prompt-v3.zh-CN.md)。
+- **M2.4 流式接入：** 从 JSONL/标准输入逐事件更新现有 Landmark Memory，默认只运行 Rule 并输出 JSON；人工 confirmation 事件才允许 FOUND。新 Rule `m2.4-distinct-captures-v1` 复用 LLM 的帧证据门槛，修复同帧重复 OCR 授权问题；旧冻结结果、oracle 和 v2/v3 提示原文保留。见 [接口与走廊回放](docs/m24-streaming.zh-CN.md)。
 - **尚未完成：** 结果仅针对人工设计的**单步模拟场景**，不代表真实寻房成功率；M0 现场链路验收、M1 门牌检测/跨帧关联、M2 与视频流集成、M3/M4 现场闭环及 VLM 部署均未完成。Prompt v3 策略目标仍只部分达成。
 
-详见[开发分支 M2.3c 评估文档](https://github.com/sceneeeee/room-sign-guided-navigation/blob/feat/m2-reasoning/docs/m2-offline-evaluation.zh-CN.md)。后续重点是分析 Qwen 过度弃权、在不降低证据校验标准的前提下开展 Prompt 对照，再与真实视觉感知链路集成。
+旧实验方法与历史成绩详见[开发分支 M2.3c 评估文档](https://github.com/sceneeeee/room-sign-guided-navigation/blob/feat/m2-reasoning/docs/m2-offline-evaluation.zh-CN.md)。下一步由 M1 显式提供地标关联与真实 frame_id，接入流式接口并记录现场 JSONL 回放。
+
+```bash
+python -m roomnav.stream_cli --target FB545 --input examples/m24_stream_demo.jsonl
+```
 
 ## 系统结构（视频流优先）
 
@@ -81,7 +86,7 @@ M2.1–M2.3c 已实现，使用本地 Ollama/Qwen3-4B 在 20 个冻结走廊场�
 | --- | --- | --- |
 | **M0 · 实时视频接入** | MacBook USB 摄像头 → Gradio 采样 → SSH → GPU OCR → 返回文本 | 流式上传和远程识别跑通，测量实际采样与延迟（原型代码已有，实测待做） |
 | **M1 · 门牌实时识别** | 自动发现门/门牌，读取 EB104 等完整编号，多帧确认、同门去重 | 输出可核验的门牌编号并保存失败样本 |
-| **M2 · 地标记忆和推理** | M2.1–M2.3c 完成独立实现；M2.3d 增加可选 v3 与 5 次开发检查 | 原 20 场景结果不变；v3 策略目标部分未达成，真实楼层验证未完成 |
+| **M2 · 地标记忆和推理** | M2.1–M2.4 独立实现；JSONL/标准输入接入 Memory 和默认 Rule | 同帧重复问题修复、FB541→FB545 回放；v3 策略目标部分未达成，真实楼层验证待完成 |
 | **M3 · 线下人机闭环** | 人在走廊移动，按系统建议检查门牌；Codex 辅助现场调试 | 完成未知房间搜索并留存日志 |
 | **M4 · 对照评估** | 对比逐门搜索、局部编号规则、VLM | 搜索成功率、查看门数、行走距离和耗时 |
 
@@ -109,6 +114,7 @@ M2.1–M2.3c 已实现，使用本地 Ollama/Qwen3-4B 在 20 个冻结走廊场�
 - [M2.3b 真实 LLM 接入与运行](docs/m2-llm-serving.zh-CN.md)
 - [M2.3c 冻结场景与离线策略评估](docs/m2-offline-evaluation.zh-CN.md)
 - [M2.3d Prompt v3 开发报告](docs/m23d-prompt-v3.zh-CN.md)
+- [M2.4 流式接口与 Rule 修复](docs/m24-streaming.zh-CN.md)
 - [环境部署与 SSH](docs/setup.zh-CN.md)
 
 目前的算法价值首先是**可验证的工程复现与实验对照**，不是声称原创了 OCR+VLM 找房间；OCR 误读、跳号、编号规则不一致以及主动重复观察属于后续需进一步查新验证的研究方向。

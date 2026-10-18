@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 
+from .baseline import RULE_VERSION
 from .evaluation import content_hash, evaluate_suite, load_suite
 from .llm_planner import PROMPT_VERSIONS, resolve_prompt_version
 from .openai_compatible import OpenAICompatibleModel
@@ -80,6 +81,7 @@ def run(args: argparse.Namespace) -> dict:
             "phase": "M2.3c", "evaluation_kind": "frozen-single-step",
             "suite_version": suite.suite_version, "suite_sha256": suite.suite_sha256,
             "prompt_version": resolve_prompt_version(args.prompt_version),
+            "rule_version": RULE_VERSION,
             "scenario_ids": [case.scenario_id for case in cases],
             "snapshots": [{"scenario_id": case.scenario_id,
                            "snapshot_sha256": content_hash(case.snapshot.to_dict()),

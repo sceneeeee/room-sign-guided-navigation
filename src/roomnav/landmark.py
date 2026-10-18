@@ -78,6 +78,27 @@ class Landmark:
             return "conflicted"
         return "consistent" if len(self.observations) >= 2 else "single"
 
+    @property
+    def has_distinct_capture_evidence(self) -> bool:
+        """Shared Rule/LLM frame gate, including legacy metadata-free logs.
+
+        Multiple OCR regions or submissions from one known frame count once.
+        Distinct captures still do not verify the physical room identity.
+        """
+        observations = self.observations
+        frame_ids = {obs.frame_id for obs in observations if obs.frame_id is not None}
+        if len(frame_ids) >= 2:
+            return True
+        if all(obs.timestamp_s is not None for obs in observations):
+            known_frame_times = {obs.timestamp_s for obs in observations if obs.frame_id is not None}
+            unframed_times = {obs.timestamp_s for obs in observations if obs.frame_id is None}
+            return len(unframed_times - known_frame_times) + len(frame_ids) >= 2
+        # Preserve the existing validator's legacy compatibility. Partial
+        # provenance cannot establish an additional capture.
+        return len(observations) >= 2 and all(
+            obs.frame_id is None and obs.timestamp_s is None for obs in observations
+        )
+
     def to_dict(self) -> dict:
         times = [o.timestamp_s for o in self.observations if o.timestamp_s is not None]
         return {

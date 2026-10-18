@@ -297,21 +297,7 @@ def _supports_verification(
         or memory.get_confirmation(landmark.landmark_id) is not None
     ):
         return False
-    # Never count a frame ID and its timestamp as two sources. Repeated known
-    # frame IDs remain one capture even if they carry differing timestamps.
-    observations = landmark.observations
-    frame_ids = {obs.frame_id for obs in observations if obs.frame_id is not None}
-    if len(frame_ids) >= 2:
-        return True
-    if all(obs.timestamp_s is not None for obs in observations):
-        known_frame_times = {obs.timestamp_s for obs in observations if obs.frame_id is not None}
-        unframed_times = {obs.timestamp_s for obs in observations if obs.frame_id is None}
-        return len(unframed_times - known_frame_times) + len(frame_ids) >= 2
-    # Legacy compatibility applies only when the entire set lacks provenance.
-    # Ambiguous partial metadata cannot supply an additional frame.
-    return len(observations) >= 2 and all(
-        obs.frame_id is None and obs.timestamp_s is None for obs in observations
-    )
+    return landmark.has_distinct_capture_evidence
 
 
 def _safe_fallback(snapshot: EvidenceSnapshot) -> tuple[Decision, tuple[str, ...]]:
@@ -322,8 +308,7 @@ def _safe_fallback(snapshot: EvidenceSnapshot) -> tuple[Decision, tuple[str, ...
             _supports_verification(memory.landmarks[landmark_id], memory, snapshot)
             for landmark_id in decision.evidence_landmark_ids
         ):
-            # M2.2 counts observations rather than frames. Apply the planner's
-            # stricter gate to fallback too, without changing the comparator.
+            # Retain a defensive check if the comparator changes independently.
             decision = replace(
                 decision, action="REOBSERVE",
                 reason="Repeated readings do not establish a multi-frame target candidate.",

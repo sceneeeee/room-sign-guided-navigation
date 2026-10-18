@@ -14,7 +14,7 @@ from statistics import mean, median
 import time
 from typing import get_args
 
-from .baseline import Decision, RoomAction
+from .baseline import RULE_VERSION, Decision, RoomAction
 from .confirmation import LandmarkConfirmation
 from .llm_backend import TextModel
 from .llm_planner import (
@@ -220,6 +220,7 @@ def evaluate_scenario(
         # Rule rows retain the configured comparison version, as in JSONL v2.
         # The policy/backend fields distinguish them from model invocations.
         "prompt_version": version,
+        "rule_version": RULE_VERSION,
         "decision": decision.to_dict(),
         "action": decision.action,
         "requested_action": requested_action,
@@ -320,6 +321,7 @@ def evaluate_suite(
         "suite_version": suite.suite_version,
         "suite_sha256": suite.suite_sha256,
         "prompt_version": version,
+        "rule_version": RULE_VERSION,
         "scenario_ids": [case.scenario_id for case in suite.scenarios],
         "records": records,
         "summaries": summaries,

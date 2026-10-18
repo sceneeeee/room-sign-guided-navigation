@@ -137,18 +137,20 @@ class EvaluationTests(unittest.TestCase):
         self.suite = load_suite(FIXTURE)
         self.cases = {case.scenario_id: case for case in self.suite.scenarios}
 
-    def test_rule_scores_all_cases_and_exposes_existing_frame_gap(self):
+    def test_m24_rule_scores_frozen_cases_with_fixed_frame_gate(self):
         report = evaluate_suite(self.suite)
         self.assertEqual(len(report["records"]), 20)
         summary = report["summaries"]["rule"]["overall"]
-        self.assertEqual(summary["policy_acceptable_count"], 19)
-        self.assertEqual(summary["legality_rate"], 19 / 20)
+        self.assertEqual(summary["policy_acceptable_count"], 20)
+        self.assertEqual(summary["legality_rate"], 1)
         self.assertEqual(summary["fallback_rate"], 0)
         row = next(row for row in report["records"] if row["scenario_id"] == "same_frame_repeated")
-        self.assertEqual(row["action"], "VERIFY_TARGET")
-        self.assertFalse(row["legal"])
-        self.assertFalse(row["policy_acceptable"])
-        self.assertIn("verify_requires_cited_consistent_target", row["legality_errors"])
+        self.assertEqual(row["action"], "REOBSERVE")
+        self.assertTrue(row["legal"])
+        self.assertTrue(row["policy_acceptable"])
+        self.assertEqual(row["legality_errors"], [])
+        self.assertEqual(row["rule_version"], "m2.4-distinct-captures-v1")
+        self.assertEqual(report["rule_version"], row["rule_version"])
 
     def test_legal_action_can_be_unacceptable(self):
         case = self.cases["ascending"]
@@ -252,12 +254,12 @@ class EvaluationTests(unittest.TestCase):
                 row = evaluate_scenario(self.cases["ascending"], "qwen", model=model)
                 self.assertIsNone(row["usage"])
 
-    def test_fallback_applies_existing_stricter_frame_gate(self):
+    def test_fallback_and_rule_share_fixed_frame_gate(self):
         row = evaluate_scenario(self.cases["same_frame_repeated"], "qwen", model=FakeModel(response="invalid"))
         self.assertEqual(row["action"], "REOBSERVE")
         self.assertTrue(row["legal"])
-        self.assertIn("fallback_verify_not_supported", row["validation_errors"])
-        self.assertEqual(decide_rule(self.cases["same_frame_repeated"].snapshot).action, "VERIFY_TARGET")
+        self.assertNotIn("fallback_verify_not_supported", row["validation_errors"])
+        self.assertEqual(decide_rule(self.cases["same_frame_repeated"].snapshot).action, "REOBSERVE")
 
     def test_transport_failures_are_not_invalid_outputs_and_never_leak(self):
         for error, kind in ((TimeoutError("SECRET"), "timeout"), (RuntimeError("SECRET"), "backend_error")):

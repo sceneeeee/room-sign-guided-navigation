@@ -1,4 +1,17 @@
-# 感知与推理模块接口 v0.1
+# 感知与推理模块接口 v0.2
+
+## M2.4 流式事件入口
+
+旧 Observation 字段和下方批处理接口仍可使用。新增 `python -m roomnav.stream_cli --target FB545 --input examples/m24_stream_demo.jsonl`，省略 `--input` 或指定 `-` 时读取标准输入。
+
+每行一个对象，观测字段平铺在事件上：
+
+```json
+{"type":"observation","kind":"room","text":"FB545","segment_id":"corridor_FB5","frame_id":"f006","landmark_id":"run01:FB5:door03","observation_id":"run01:f006:roi0","side":"left"}
+{"type":"operator_confirmation","landmark_id":"run01:FB5:door03","text":"FB545","confirmed_by":"operator"}
+```
+
+仅 observation 能写入原始证据；只有操作员显式提交的 operator_confirmation 能调用确认接口。每次有效事件输出包含 `event_type`、`status`、`target`、`active_segment`、四项 Memory 计数、`policy=rule`、`rule_version` 和完整 `decision` 的 JSON。相同 observation_id/内容幂等，冲突拒绝；拒绝事件不改变 Memory 或当前走廊。未知字段拒绝，可选 Observation 字段兼容。详细类型、错误处理、帧来源兼容与逐行验收输出见 [M2.4 接口文档](m24-streaming.zh-CN.md)。
 
 ## Perception -> Reasoning
 
@@ -74,7 +87,7 @@
 
 这里的 `candidate_text` 只是 OCR 票数最多的候选文本，不等于已经确认的真实房间编号。票数相同时返回 `null`；`consistent` 也仅指多次识别输出一致，不是人工核实。左右侧的定义必须使用一致的走廊参考方向；返回时观察方向反转应标注 `unknown` 或统一坐标规则。
 
-**M2.2 已实现：** 规则基线已改为只依赖显式关联地标的候选或人工确认结果形成编号趋势；遇到 OCR 冲突时要求复查。视频流与规则模块尚未直接相连。
+**M2.2/M2.4 已实现：** 规则基线只依赖显式关联地标的候选或人工确认结果形成编号趋势；遇到 OCR 冲突时要求复查。M2.4 已有 JSONL/标准输入流式入口，真实 M1 视频事件适配仍待接入。
 
 参考：[M2.1 设计与预训练模型复用](m2-memory.zh-CN.md)。
 

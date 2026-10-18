@@ -159,15 +159,15 @@ class PromptVersionTests(unittest.TestCase):
             self.assertTrue(missing_citation.fallback_used)
             self.assertIn("found_requires_cited_operator_confirmation", missing_citation.validation_errors)
 
-    def test_same_frame_rule_defect_remains_and_fallback_is_safe(self):
+    def test_fixed_rule_and_both_prompt_fallbacks_share_frame_gate(self):
         snapshot = build_evidence_snapshot("DM682", candidate(same_frame=True))
-        self.assertEqual(decide_rule(snapshot).action, "VERIFY_TARGET")
+        self.assertEqual(decide_rule(snapshot).action, "REOBSERVE")
         for version in ("v2", "v3"):
             for fake in (FakeModel(response="invalid JSON"), FakeModel(error=TimeoutError())):
                 result = LLMPlanner(fake, prompt_version=version).plan_snapshot(snapshot)
                 self.assertTrue(result.fallback_used)
                 self.assertEqual(result.decision.action, "REOBSERVE")
-                self.assertIn("fallback_verify_not_supported", result.validation_errors)
+                self.assertNotIn("fallback_verify_not_supported", result.validation_errors)
                 self.assertEqual(result.prompt_version, resolve_prompt_version(version))
 
     def test_strict_failure_reports_actual_version_without_fallback(self):

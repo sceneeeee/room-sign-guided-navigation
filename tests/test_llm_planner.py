@@ -175,10 +175,10 @@ class LLMPlannerTests(unittest.TestCase):
                     )
                     for index in range(2)
                 ])
-                self.assertEqual(decide_next("EB104", memory).action, "VERIFY_TARGET")
+                self.assertEqual(decide_next("EB104", memory).action, "REOBSERVE")
                 result = self.plan(response("VERIFY_TARGET", ("A:d4",)), memory)
                 self.assert_failed(result, "verify_requires_cited_consistent_target")
-                self.assertIn("fallback_verify_not_supported", result.validation_errors)
+                self.assertNotIn("fallback_verify_not_supported", result.validation_errors)
                 self.assertEqual(result.decision.action, "REOBSERVE")
                 # Invalid JSON must not regain VERIFY through the rule fallback.
                 invalid = self.plan("not JSON", memory)

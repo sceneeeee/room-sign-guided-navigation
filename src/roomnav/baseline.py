@@ -11,6 +11,8 @@ from typing import Literal
 
 from .memory import LandmarkMemory
 
+RULE_VERSION = "m2.4-distinct-captures-v1"
+
 RoomAction = Literal[
     "FOUND",
     "VERIFY_TARGET",
@@ -101,10 +103,13 @@ def decide_next(
         if memory.get_confirmation(lm.landmark_id) is not None:
             continue
         if any(parse_room_number(label) == target_id for label in lm.label_votes):
-            if lm.status == "consistent" and lm.candidate_text is not None:
+            if (
+                lm.status == "consistent" and lm.candidate_text is not None
+                and lm.has_distinct_capture_evidence
+            ):
                 return Decision(
                     "VERIFY_TARGET",
-                    "The associated landmark was repeatedly read as the target; request human confirmation.",
+                    "The associated landmark has consistent target OCR eligible for human verification.",
                     facts=(f"Landmark {lm.landmark_id} has repeated OCR text {lm.candidate_text}.",),
                     uncertainties=("Matching OCR readings are correlated and may all be wrong.",),
                     evidence_landmark_ids=(lm.landmark_id,),
