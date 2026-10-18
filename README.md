@@ -36,7 +36,7 @@ Room-number rules / VLM planning → next observation   [rules isolated; VLM pla
 Human follows suggestion and captures more evidence    [M3 planned]
 ~~~
 
-The live demo **samples browser webcam frames** (default every 1.5 s) for remote OCR; it is not a 30-FPS video pipeline. It has not been tested on the team's physical camera/network, and returns **raw text**, not verified room labels or navigation decisions. No 3-D localization is claimed; `segment_id` / `side` may be operator annotated.
+The live demo **samples browser webcam frames** (nominally every 1.5 s) for remote OCR; it is not a 30-FPS video pipeline. Fill in the observation condition before Record; the first 5 s are for settling, followed by about 12 s of OCR and local saving before the page stops the recording. Each processed frame and raw OCR result is saved locally on the Linux server for human review. It returns **raw text**, not verified room labels or navigation decisions. No 3-D localization is claimed; `segment_id` / `side` may be operator annotated.
 
 ## Quick start — live webcam (M0)
 

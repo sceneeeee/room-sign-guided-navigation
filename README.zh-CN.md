@@ -37,7 +37,7 @@ RoomObservation → Landmark Memory       [已有数据结构，待接入视频]
 人按建议行走并继续观察                [现场闭环待集成]
 ~~~
 
-这里的“视频流”是**浏览器定时提交图像帧**，不是连续 30 FPS 原始视频。当前输出未经核验的 OCR 文本，不包含自动门检测或导航推理。照片与录制视频保留作回归测试；`segment_id` 和 `side` 可人工标注，不代表 SLAM 自动定位。
+这里的“视频流”是**浏览器定时提交图像帧**，不是连续 30 FPS 原始视频。页面会将实际提交的帧及未经核验的 OCR 文本保存到 Linux 本地 `data/live_sessions/`，并允许人工逐帧标注；不包含自动门检测或导航推理。照片与录制视频保留作回归测试；`segment_id` 和 `side` 可人工标注，不代表 SLAM 自动定位。
 
 ## 快速开始：实时视频流（M0）
 
@@ -56,7 +56,7 @@ MacBook 现场建立 SSH 隧道并保持连接：
 ssh -N -L 7860:127.0.0.1:7860 USER@GPU_HOST
 ~~~
 
-在 MacBook 浏览器打开 `http://127.0.0.1:7860`，授权访问实验室 USB RGB 摄像头。默认约每 1.5 秒上传一帧到远程 OCR，结果在同一个网页显示。首次加载 OCR 模型可能较慢；界面耗时仅为**远端 OCR 执行时间**，不包含网络、排队与显示延迟。若 SSH 先进入 Windows 但模型在 WSL2，请核实端口可达。
+在 MacBook 浏览器打开 `http://127.0.0.1:7860`，授权访问摄像头。每轮先填写采集条件；点击 `Record` 后约 5 秒用于稳定相机，不做 OCR 或保存；随后约 12 秒以名义间隔 1.5 秒取帧识别并保存，页面自动停止。首次加载 OCR 模型可能较慢；界面耗时仅为**远端 OCR 执行时间**，不包含网络、排队与显示延迟。若 SSH 先进入 Windows 但模型在 WSL2，请核实端口可达。
 
 照片仍作为**调试与回归输入**，可单独运行：
 
@@ -102,6 +102,7 @@ python -m unittest discover -s tests -v
 - [ReasonNav 项目主页（CoRL 2025）](https://reasonnav.github.io/)
 - [ReasonNav 官方代码](https://github.com/ReasonNav/ReasonNav)
 - [实验设计](docs/experiment.zh-CN.md)
+- [1F 手机 + Camo 现场测试与上传完整 SOP](docs/field-test-sop-1f.zh-CN.md)
 - [路线与分工](docs/roadmap.zh-CN.md)
 - [模块接口](docs/interfaces.zh-CN.md)
 - [环境部署与 SSH](docs/setup.zh-CN.md)
