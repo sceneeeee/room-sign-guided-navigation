@@ -1,6 +1,6 @@
 # 基于门牌与指示牌的室内导航（Room & Sign-Guided Indoor Navigation）
 
-[English](README.md) · **阶段：M2.4 默认 Rule 流式入口已实现；M1 现场集成待完成**
+[English](README.md) · **项目状态（2026-10-18）：M0 单条件现场测试见开放 PR #1；M2.1–M2.4 已在本分支实现；M1/M3/M4 待完成**
 
 ## 核心目标
 
@@ -15,13 +15,14 @@
 
 ## 开发进度快照（2026-10-18）
 
-**分支边界：** 默认 `main` 分支目前提供 M0 摄像头/RapidOCR 原型与早期推理脚手架。**M2.1–M2.4 的完整实现位于 [`feat/m2-reasoning`](https://github.com/sceneeeee/room-sign-guided-navigation/tree/feat/m2-reasoning)，尚未合并至 `main`。** 下述 M2 命令与实验结果属于开发分支，不能假定可在 `main` 直接运行。
+**分支边界：** `main` 目前只有初版 Gradio/RapidOCR M0 原型；**本 `feat/m2-reasoning` 分支**包含 M2.1–M2.4，**尚未合并到 `main`**。此外，队友的 [PR #1](https://github.com/sceneeeee/room-sign-guided-navigation/pull/1) 提供 M0 定时采样、逐帧保存/复核/导出与 LSS101 现场结果，**PR 仍开放，相关代码尚不在本分支**。下述 M2 命令和文档可在本开发分支使用。
 
-- **开发分支已实现：** M2.1 地标与证据记忆、M2.2 规则基线、M2.3a 受约束文本 LLM Planner/回退、M2.3b 本地 Ollama/Qwen3-4B 接入、M2.3c 20 个冻结单步场景与策略评估；**154 项单元测试在本地 WSL 连续五轮通过**。
-- **已完成的离线对照（20 个模拟场景，Qwen3-4B-Instruct-2507 Q4_K_M，Prompt v2）：** Rule-based **19/20（95%）**动作合法且可接受（同帧重复计数有 1 个已知问题）；Qwen **10/20（50%）**可接受、**20/20（100%）**合法、**0 次** fallback、**17/20（85%）**选择弃权，平均推理延迟约 **1.89 秒**。
+- **本分支已实现：** M2.1 地标与证据记忆、M2.2 Rule 基线、M2.3a 受约束文本 LLM Planner/回退、M2.3b 本地 Ollama/Qwen3-4B、M2.3c 20 个冻结单步场景评估、M2.3d Prompt v2/v3 版本切换、M2.4 JSONL/标准输入流式观测与 Rule 决策。**M2.4 完成后，本地 WSL 全量 194 项测试通过**。
+- **历史离线对照（20 个人工设计的单步场景，Qwen3-4B-Instruct-2507 Q4_K_M，Prompt v2）：** **旧版** Rule-based **19/20（95%）**动作合法且可接受，存在 1 个同帧重复计数问题；Qwen **10/20（50%）**可接受、**20/20** 合法、**0 次** fallback、**17/20（85%）**弃权，平均延迟约 **1.89 秒**。M2.4 修复后的 Rule 在**同一套已暴露的测试集上回归达到 20/20**，这是缺陷修复验证，**不等于独立泛化成绩**。
+- **M0 单条件现场实验（独立的开放 PR #1）：** 队友使用**手机/Camo → MacBook → SSH → Linux RapidOCR**，在约 **2 m、正面、相机高 1.0 m** 的条件下，对实物门牌 `LSS101` 进行了**一次定点测试，采样 6 帧**。OCR 原文 **5/6 帧**识别出完整 `LSS101`，1 帧无文字；远端 OCR 处理耗时 **0.54–1.09 秒/帧**，不包括端到端延迟。CSV 只有 **2/6 帧填写了 `room_truth`**，该子集 **2/2** 正确，**不能宣传整体验证准确率为 100%**。PR #1 尚未合并到本分支。
 - **M2.3d 开发检查：** 两个 LLM CLI 支持 `--prompt-version v2|v3`，默认仍为 v2，证据校验未改。5 次新开发案例的 Qwen 请求中，v3 改善了一次冲突重观测，趋势案例仍失败，另一次跨走廊引用被拒绝并安全回退。这些不是独立盲测，见 [Prompt v3 报告](docs/m23d-prompt-v3.zh-CN.md)。
 - **M2.4 流式接入：** 从 JSONL/标准输入逐事件更新现有 Landmark Memory，默认只运行 Rule 并输出 JSON；人工 confirmation 事件才允许 FOUND。新 Rule `m2.4-distinct-captures-v1` 复用 LLM 的帧证据门槛，修复同帧重复 OCR 授权问题；旧冻结结果、oracle 和 v2/v3 提示原文保留。见 [接口与走廊回放](docs/m24-streaming.zh-CN.md)。
-- **尚未完成：** 结果仅针对人工设计的**单步模拟场景**，不代表真实寻房成功率；M0 现场链路验收、M1 门牌检测/跨帧关联、M2 与视频流集成、M3/M4 现场闭环及 VLM 部署均未完成。Prompt v3 策略目标仍只部分达成。
+- **尚未完成：** M0 只有一扇门、一个固定条件的现场记录；M2 结果主要来自人工设计的**单步模拟场景**，不能代表真实寻房成功率。**M1 完整房号提取和同一物理门的跨帧关联、M1→M2 实时对接、M3/M4 的实地寻房与受控对照仍未完成**。Prompt v3 策略效果仍不稳定；当前 Rule/文本 LLM 路线无需先部署 VLM。
 
 旧实验方法与历史成绩详见[开发分支 M2.3c 评估文档](https://github.com/sceneeeee/room-sign-guided-navigation/blob/feat/m2-reasoning/docs/m2-offline-evaluation.zh-CN.md)。下一步由 M1 显式提供地标关联与真实 frame_id，接入流式接口并记录现场 JSONL 回放。
 
@@ -32,7 +33,7 @@ python -m roomnav.stream_cli --target FB545 --input examples/m24_stream_demo.jso
 ## 系统结构（视频流优先）
 
 ~~~text
-MacBook + USB RGB 摄像头（实时视频采样）  [M0 最小代码已实现，线下未验证]
+手机/Camo 或 USB 摄像头 → Gradio 采样       [M0 原型；PR #1 已单条件实测]
       ↓ Gradio 按约 1.5 秒取一帧 + SSH 端口转发
 远程 GPU 电脑：RapidOCR 原始文本
       ↓ 门/门牌检测、跨帧确认和去重     [M1 待开发]
@@ -43,7 +44,7 @@ RoomObservation → Landmark Memory       [已有数据结构，待接入视频]
 人按建议行走并继续观察                [现场闭环待集成]
 ~~~
 
-这里的“视频流”是**浏览器定时提交图像帧**，不是连续 30 FPS 原始视频。当前输出未经核验的 OCR 文本，不包含自动门检测或导航推理。照片与录制视频保留作回归测试；`segment_id` 和 `side` 可人工标注，不代表 SLAM 自动定位。
+这里的“视频流”是**浏览器定时提交图像帧**，不是连续 30 FPS 原始视频。**队友在开放 PR #1 中实测了手机/Camo/SSH OCR 链路，但该 PR 的定时采集、人工复核 UI 尚未进入本分支。** OCR 输出是未经人工核验的原始文字，不能作为已确认房号或导航决策。照片和录制视频用于回归测试；`segment_id` 和 `side` 可人工标注，不代表 SLAM 自动定位。
 
 ## 快速开始：实时视频流（M0）
 
@@ -78,17 +79,21 @@ roomnav-baseline --target EB104 --observations examples/observations_eb.jsonl
 python -m unittest discover -s tests -v
 ~~~
 
-M2.1–M2.3c 已实现，使用本地 Ollama/Qwen3-4B 在 20 个冻结走廊场景中完成与 Rule-based 的真实调用对照；评估 CLI 默认只运行 Rule，[评估文档](docs/m2-offline-evaluation.zh-CN.md)包含运行方式与指标定义。现场摄像头、门牌检测、跨帧去重、实时记忆入库和 VLM 仍未集成。详细步骤见 [部署文档](docs/setup.zh-CN.md)。
+M2.1–M2.4 均已在本分支实现：本地 Ollama/Qwen3-4B 在 20 个冻结单步场景中完成过真实调用对照，评估 CLI 默认只运行 Rule；**M2.4 流式 CLI 已能处理 JSONL 并增量更新 Landmark Memory，但尚未接入队友真实摄像头/M1 输出**。可运行下方回放，详见 [M2.4 文档](docs/m24-streaming.zh-CN.md)、[离线评估协议](docs/m2-offline-evaluation.zh-CN.md)及[部署文档](docs/setup.zh-CN.md)：
+
+~~~bash
+python -m roomnav.stream_cli --target FB545 --input examples/m24_stream_demo.jsonl
+~~~
 
 ## 视频流优先的里程碑
 
 | 阶段 | 核心工作 | 验收结果 |
 | --- | --- | --- |
-| **M0 · 实时视频接入** | MacBook USB 摄像头 → Gradio 采样 → SSH → GPU OCR → 返回文本 | 流式上传和远程识别跑通，测量实际采样与延迟（原型代码已有，实测待做） |
-| **M1 · 门牌实时识别** | 自动发现门/门牌，读取 EB104 等完整编号，多帧确认、同门去重 | 输出可核验的门牌编号并保存失败样本 |
+| **M0 · 实时视频接入** | 手机/Camo 或摄像头 → Gradio → SSH → 远端 RapidOCR | 本分支有基础原型；PR #1 记录单门牌、单条件 6 帧现场结果，待合并 |
+| **M1 · 门牌实时识别** | 提取完整房号；提供真实 `frame_id` / `observation_id`；对同一实体门明确关联 `landmark_id`，不同门不能凭相同 OCR 合并 | 队友下一阶段任务；首版允许人工标注地标关联，至少测试 3 扇实体门 |
 | **M2 · 地标记忆和推理** | M2.1–M2.4 独立实现；JSONL/标准输入接入 Memory 和默认 Rule | 同帧重复问题修复、FB541→FB545 回放；v3 策略目标部分未达成，真实楼层验证待完成 |
-| **M3 · 线下人机闭环** | 人在走廊移动，按系统建议检查门牌；Codex 辅助现场调试 | 完成未知房间搜索并留存日志 |
-| **M4 · 对照评估** | 对比逐门搜索、局部编号规则、VLM | 搜索成功率、查看门数、行走距离和耗时 |
+| **M3 · 线下人机闭环** | M1 观测接入 M2.4；人按下一步观察建议移动并明确确认目标 | 真实多门牌闭环尚未验证 |
+| **M4 · 对照评估** | 对比逐门搜索、Rule、文本 LLM | 搜索成功率、查看门数、行走距离和耗时；尚未开展 |
 
 照片和录制视频用于**回归测试与失败复现**，不作为独立的前置开发阶段。
 
@@ -101,7 +106,7 @@ M2.1–M2.3c 已实现，使用本地 Ollama/Qwen3-4B 在 20 个冻结走廊场�
 - **成员 B 的 Codex 辅助现场调试：** 在实时视频流的线下测试过程中使用 **Codex** 辅助阅读日志、定位识别或取流问题、修改采集与推理代码、调整参数、重新运行并即时验证。每次改动应保留可复现的版本与测试记录，重要改动经人工确认后再应用。
 - **共同：** 统一感知输出与推理输入的 JSON 接口、集成端到端人机交互流程，并复盘失败案例。
 
-**现场迭代流程（实时采样示例已实现，线下流程待验证）：** 摄像头取流 → 远程 GPU 识别 / 推理 → 观察失败案例与延迟 → 队友使用 Codex 辅助修改代码 → 重新测试并记录效果。Codex 是现场开发与调试工具，**不是**自动识别门牌或决定导航方向的模型；上述实时联调尚未完成验证。
+**现场迭代流程：** 摄像头取流 → 远端 OCR → 观察识别结果、耗时和失败案例 → Codex 辅助修改代码 → 回归测试与版本记录。**PR #1 已有一次 M0 定点测试**，多条件、多门牌以及 M1→M2 的真实闭环尚未验证。Codex 是开发调试工具，**不是**门牌识别或导航决策模型。
 
 ## 参考资料
 
@@ -110,6 +115,7 @@ M2.1–M2.3c 已实现，使用本地 Ollama/Qwen3-4B 在 20 个冻结走廊场�
 - [实验设计](docs/experiment.zh-CN.md)
 - [路线与分工](docs/roadmap.zh-CN.md)
 - [模块接口](docs/interfaces.zh-CN.md)
+- [M0 LSS101 现场采集与数据 PR #1（待合并）](https://github.com/sceneeeee/room-sign-guided-navigation/pull/1)
 - [M2.2 基于证据的规则推理](docs/m2-rule-reasoning.zh-CN.md)
 - [M2.3b 真实 LLM 接入与运行](docs/m2-llm-serving.zh-CN.md)
 - [M2.3c 冻结场景与离线策略评估](docs/m2-offline-evaluation.zh-CN.md)
