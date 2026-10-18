@@ -1,47 +1,50 @@
 # 基于门牌与指示牌的室内导航（Room & Sign-Guided Indoor Navigation）
 
-[English](README.md) · **阶段：main 为 M0/RapidOCR 原型；M2.1–M2.3c 在独立开发分支，尚未合并**
+[English](README.md) · **项目状态（2026-10-18）：M0 已有单条件现场测试（PR #1 待合并）；M2.1–M2.4 已在开发分支完成；M1/M3/M4 待完成**
 
-## 核心目标
+## 研究目标与边界
 
-当目标房间（例如 `EB104`）的具体位置未知时，系统利用**已经观察到的门牌、方向指示牌及少量拓扑关系**，推断下一处应该去哪里观察，再逐步找到目标。
+当目标房间（如 `EB104`）的位置未知时，系统利用**已经观察到的门牌、方向指示牌和少量走廊拓扑标注**，判断下一处应该去哪里观察，并逐步寻找目标。核心研究问题是：能否比逐门检查更高效地搜索未知房间？
 
-**第一阶段不使用 Frogbot。** 由人手持手机 / USB RGB 摄像头在真实教学楼中移动；MacBook 负责现场交互，可通过 SSH 与远程 GPU 电脑通信；远端运行文字识别与高层推理。模型返回下一步建议，由人执行并采集新观察。
+第一阶段采用**RGB 摄像头 + 人在回路（human-in-the-loop）**：人手持手机或 USB 摄像头移动，MacBook 提供交互并通过 SSH 连接远程 OCR；计划由感知模块记录实体门牌，再由规则或文本 LLM 提出下一步观察建议，由人执行。**完整的感知—推理—行动闭环尚未集成。** 当前不使用 Frogbot、深度、LiDAR、SLAM 或 Nav2。
 
-研究问题分为两层：
+## 开发进度快照（2026-10-18）
 
-1. **视觉感知：** RGB 图像能否稳定找到门牌并读取完整编号？
-2. **空间推理：** 当目标尚未出现时，基于已有编号和走廊关系，能否提高搜索效率？
+**请区分项目进度与 `main` 实际可运行的代码：**
 
-## 开发进度快照（2026-10-14）
+- **`main`（当前 README 所在分支）：** 只有早期浏览器摄像头 / Gradio / RapidOCR 原型和推理脚手架，尚不包含完整 M2.4 流式模块。
+- **[PR #1 — M0 现场采集与实验结果](https://github.com/sceneeeee/room-sign-guided-navigation/pull/1)：** 目前仍是针对 `main` 的开放 PR。队友开发了定时录制、保存实际采样帧和 OCR、人工复核与导出，并提交现场实验记录；**相关改动尚未合并**。
+- **[`feat/m2-reasoning`](https://github.com/sceneeeee/room-sign-guided-navigation/tree/feat/m2-reasoning)：** M2.1–M2.4 已开发、提交并推送，M2.4 对应 commit `65c7e26`；**尚未合并到 `main`**。下面提到的 M2 命令、文档与测试结果属于该开发分支。
 
-**分支边界：** 默认 `main` 分支目前提供 M0 摄像头/RapidOCR 原型与早期推理脚手架。**M2.1–M2.3c 的完整实现位于 [`feat/m2-reasoning`](https://github.com/sceneeeee/room-sign-guided-navigation/tree/feat/m2-reasoning)，尚未合并至 `main`。** 下述 M2 命令与实验结果属于开发分支，不能假定可在 `main` 直接运行。
+**实际完成情况与限制：**
 
-- **开发分支已实现：** M2.1 地标与证据记忆、M2.2 规则基线、M2.3a 受约束文本 LLM Planner/回退、M2.3b 本地 Ollama/Qwen3-4B 接入、M2.3c 20 个冻结单步场景与策略评估；**154 项单元测试在本地 WSL 连续五轮通过**。
-- **已完成的离线对照（20 个模拟场景，Qwen3-4B-Instruct-2507 Q4_K_M，Prompt v2）：** Rule-based **19/20（95%）**动作合法且可接受（同帧重复计数有 1 个已知问题）；Qwen **10/20（50%）**可接受、**20/20（100%）**合法、**0 次** fallback、**17/20（85%）**选择弃权，平均推理延迟约 **1.89 秒**。
-- **尚未完成：** 结果仅针对人工设计的**单步模拟场景**，不代表真实寻房成功率；M0 现场链路验收、M1 门牌检测/跨帧关联、M2 与视频流集成、M3/M4 现场闭环及 VLM 部署均未完成。**Prompt v3 尚未开发。**
+- **M0 · 有限现场验证：** 2026-10-18，队友使用**手机 → Camo → MacBook 浏览器 → SSH → Linux RapidOCR**，在约 **2 m、正面、镜头高 1.0 m** 的单一条件下，对实物门牌 `LSS101` 完成 **1 次定点 Record、共 6 张采样帧**。其中 **5/6 帧**的 OCR 原文包含完整 `LSS101`，1 帧无文字；远端 OCR 耗时 **0.54–1.09 秒/帧**，不含端到端传输与显示。CSV 中仅 **2/6 帧单独填写了 `room_truth`**，这 2 帧均正确（已填写真值子集为 2/2），**不能据此宣称整体准确率 100%**。样本量也不足以证明不同房间、角度与运动状态下的稳健性。
+- **M1 · 待开发：** 从原始 OCR 提取完整房号、区分不同物理门牌、跨帧关联和去重，为每条观测提供可信的 `frame_id`、`observation_id`、`landmark_id`。首版可以人工标注关联，**不能仅凭 OCR 字符串相同就认定是同一扇门**。
+- **M2 · 开发分支已独立实现：** M2.1 `LandmarkMemory`；M2.2 编号规则基线；M2.3a 受约束文本 LLM Planner 与安全回退；M2.3b 本地 Ollama/Qwen3-4B；M2.3c 冻结 20 场景评估；M2.3d 可选 Prompt v2/v3（**v2 默认，v3 策略效果仍不稳定**）；M2.4 JSONL/标准输入流式观测、增量规则决策与同帧重复计数修复。**本地 WSL 全量 194 项单元测试通过**。模拟 `FB541 → FB543 → FB545` 回放可依次返回 `REOBSERVE` / `VERIFY_TARGET` / 人工确认后 `FOUND`，但这**不是现场寻房成功案例**。
+- **历史离线对照（Prompt v2）：** 20 个**人工设计、冻结的单步场景**中，旧 Rule **19/20** 动作合法且可接受；Qwen **10/20** 可接受、**20/20** 合法、**0** 次 fallback、**17/20** 弃权。M2.4 修复已知同帧 Bug 后，Rule 在**同一套已暴露**场景上回归为 **20/20**；这是修复回归，**不是独立泛化验证**。Prompt v3 只有 5 次开发检查，不能据此推断真实策略更优。
+- **M3/M4 · 尚未开展真实闭环与正式对照：** M2.4 尚未收到实时 M1 观测；没有多门牌实地寻房的成功率、查看门数、行走时间/距离指标。当前使用文本 OCR + Rule / 文本 Qwen，未部署 VLM，现阶段也不必以 VLM 为前置条件。
 
-详见[开发分支 M2.3c 评估文档](https://github.com/sceneeeee/room-sign-guided-navigation/blob/feat/m2-reasoning/docs/m2-offline-evaluation.zh-CN.md)。后续重点是分析 Qwen 过度弃权、在不降低证据校验标准的前提下开展 Prompt 对照，再与真实视觉感知链路集成。
-
-## 系统结构（视频流优先）
+## 系统结构（预期闭环）
 
 ~~~text
-MacBook + USB RGB 摄像头（实时视频采样）  [M0 最小代码已实现，线下未验证]
-      ↓ Gradio 按约 1.5 秒取一帧 + SSH 端口转发
-远程 GPU 电脑：RapidOCR 原始文本
-      ↓ 门/门牌检测、跨帧确认和去重     [M1 待开发]
-RoomObservation → Landmark Memory       [已有数据结构，待接入视频]
-      ↓
-编号规则 / VLM 下一步观察建议          [规则基线独立可运行；VLM 待开发]
-      ↓
-人按建议行走并继续观察                [现场闭环待集成]
+手机/Camo 或 USB 摄像头 → MacBook 浏览器 → SSH → 远程 RapidOCR
+                                          [M0：PR #1 已有单条件现场实验]
+             ↓ 原始 OCR 与真实采样帧
+完整房号提取 + 同一实体门牌跨帧关联       [M1：尚未实现]
+             ↓ 显式 Observation JSONL
+               (segment_id / frame_id / observation_id / landmark_id)
+LandmarkMemory → Rule / 可选文本 Qwen     [M2：开发分支独立可运行]
+             ↓ 高层下一步观察建议（不是路径或机器人控制）
+人到下一扇门继续观察并更新记忆            [M3：待联调]
+             ↓
+逐门搜索 / Rule / 文本 LLM 受控对照        [M4：待实验]
 ~~~
 
-这里的“视频流”是**浏览器定时提交图像帧**，不是连续 30 FPS 原始视频。当前输出未经核验的 OCR 文本，不包含自动门检测或导航推理。照片与录制视频保留作回归测试；`segment_id` 和 `side` 可人工标注，不代表 SLAM 自动定位。
+浏览器按约 **1.5 秒/帧**采样，不是连续 30 FPS 视频；OCR 输出是未经人工确认的原始证据。走廊段与左右侧可以人工标注，不代表机器人定位、自动建图或目标位置真值。
 
-## 快速开始：实时视频流（M0）
+## 快速开始
 
-在远程推理电脑上（Python 3.10+）：
+**`main` 上可以运行的 M0 早期原型**（远程推理电脑，Python 3.10+）：
 
 ~~~bash
 python3 -m venv .venv
@@ -50,60 +53,56 @@ pip install -e '.[vision,ui]'
 python apps/live_demo.py
 ~~~
 
-MacBook 现场建立 SSH 隧道并保持连接：
+MacBook 建立 SSH 隧道并保持连接：
 
 ~~~bash
 ssh -N -L 7860:127.0.0.1:7860 USER@GPU_HOST
 ~~~
 
-在 MacBook 浏览器打开 `http://127.0.0.1:7860`，授权访问实验室 USB RGB 摄像头。默认约每 1.5 秒上传一帧到远程 OCR，结果在同一个网页显示。首次加载 OCR 模型可能较慢；界面耗时仅为**远端 OCR 执行时间**，不包含网络、排队与显示延迟。若 SSH 先进入 Windows 但模型在 WSL2，请核实端口可达。
+在 MacBook 浏览器访问 `http://127.0.0.1:7860` 并允许摄像头权限。摄像头由 **MacBook 浏览器**访问，SSH 只是转发网页请求；显示的 OCR 耗时仅代表远端处理，不包含网络、排队与浏览器渲染。**PR #1 新增的定时录制、保存与人工复核尚不在 `main`**。详见[部署说明](docs/setup.zh-CN.md)。
 
-照片仍作为**调试与回归输入**，可单独运行：
-
-~~~bash
-python scripts/ocr_image.py /path/to/door.jpg
-python apps/photo_demo.py
-~~~
-
-已有规则推理基线也可独立测试：
+**M2.4 离线流式回放**需先切换到开发分支（以下命令**不能直接在 `main` 使用**）：
 
 ~~~bash
-roomnav-baseline --target EB104 --observations examples/observations_eb.jsonl
-python -m unittest discover -s tests -v
+git switch feat/m2-reasoning
+pip install -e .
+python -m roomnav.stream_cli --target FB545 --input examples/m24_stream_demo.jsonl
+python -m unittest discover -s tests -q
 ~~~
 
-目前现场摄像头尚未验收，且实时门检测、可信门牌编号、跨帧去重和 VLM 推理尚未集成。详细步骤见 [部署文档](docs/setup.zh-CN.md)。
+此流式 CLI 默认**仅使用 Rule-based**，不会自动调用 Ollama/Qwen；`FOUND` 必须由独立的人工确认事件授权。单张照片调试仍可使用 `scripts/ocr_image.py` 或 `apps/photo_demo.py`。
 
-## 视频流优先的里程碑
+## 开发里程碑与分工
 
-| 阶段 | 核心工作 | 验收结果 |
+| 阶段 | 关键工作 | 当前状态 |
 | --- | --- | --- |
-| **M0 · 实时视频接入** | MacBook USB 摄像头 → Gradio 采样 → SSH → GPU OCR → 返回文本 | 流式上传和远程识别跑通，测量实际采样与延迟（原型代码已有，实测待做） |
-| **M1 · 门牌实时识别** | 自动发现门/门牌，读取 EB104 等完整编号，多帧确认、同门去重 | 输出可核验的门牌编号并保存失败样本 |
-| **M2 · 地标记忆和推理** | 结构化观测接入 Landmark Memory，加入编号规则和 VLM 决策 | 根据已见编号生成下一步观察建议 |
-| **M3 · 线下人机闭环** | 人在走廊移动，按系统建议检查门牌；Codex 辅助现场调试 | 完成未知房间搜索并留存日志 |
-| **M4 · 对照评估** | 对比逐门搜索、局部编号规则、VLM | 搜索成功率、查看门数、行走距离和耗时 |
+| **M0 · 取帧/OCR** | 远程文字识别、现场采样、逐帧保存和人工复核 | `main` 有初版；PR #1 含一次 LSS101 现场记录和升级版 UI，待合并 |
+| **M1 · 视觉感知** | 完整房号提取、同门跨帧关联、不同门牌去重与观测 ID | **队友下一阶段重点**，未完成 |
+| **M2 · 记忆与策略** | Rule / 文本 Qwen、离线评估、流式 JSONL 决策 | **M2.1–M2.4 已在开发分支完成**，尚未接真实 M1 输入 |
+| **M3 · 现场寻房闭环** | 将 M1 输出接入 M2.4，由人执行观察建议 | 尚未集成 |
+| **M4 · 受控对照** | 逐门搜索 vs Rule vs 文本 LLM；记录成功率与成本 | 尚未开始 |
 
-照片和录制视频用于**回归测试与失败复现**，不作为独立的前置开发阶段。
+- **成员 A（推理/评估）：** 维护 M2、Rule 和文本 Qwen 对照，负责 M1/M2 适配与 M3/M4 评价方案。
+- **成员 B（感知/现场）：** 维护 M0 采集与可复现实验记录，继续开发 M1 完整门牌提取、物理门关联、真实观测 ID 和现场测试。
+- **共同：** 固定 `Observation` 数据契约，区分 OCR 原始证据与人工确认，分析失败案例并完成多门牌实地演示。
 
-**暂不涉及：** Frogbot、深度相机、LiDAR、SLAM、Nav2、云台硬件和完整 ReasonNav 部署。
+**近期工作：** 先修正 PR #1 中逐帧 `room_truth` 与准确率口径、复查取帧复现性；随后按 [M2.4 Observation 接口](https://github.com/sceneeeee/room-sign-guided-navigation/blob/feat/m2-reasoning/docs/m24-streaming.zh-CN.md) 开发 M1。M1 至少测试三扇不同实体门，输出真实 `frame_id` / 显式 `landmark_id` 与可回放 JSONL，再进行 M3 集成。README 更新**不意味着已合并 M2 或 PR #1**。
 
-## 两个人的分工
-
-- **成员 A（你）｜推理与评估：** 负责 Landmark Memory、门牌编号规则基线、VLM 高层推理、下一步观察动作选择，以及逐门搜索 / 规则 / VLM 的对照实验设计与结果分析。
-- **成员 B（队友）｜视觉感知与线下测试：** 以 **USB RGB 摄像头实时视频流接入（M0）**及线下测试为首要任务，随后负责门牌检测、OCR、跨帧去重，照片与录像用于回归；完成门 / 门牌检测、OCR、跨帧去重及感知指标统计；主导 **MacBook + SSH + 远程 GPU** 的线下联调。
-- **成员 B 的 Codex 辅助现场调试：** 在实时视频流的线下测试过程中使用 **Codex** 辅助阅读日志、定位识别或取流问题、修改采集与推理代码、调整参数、重新运行并即时验证。每次改动应保留可复现的版本与测试记录，重要改动经人工确认后再应用。
-- **共同：** 统一感知输出与推理输入的 JSON 接口、集成端到端人机交互流程，并复盘失败案例。
-
-**现场迭代流程（实时采样示例已实现，线下流程待验证）：** 摄像头取流 → 远程 GPU 识别 / 推理 → 观察失败案例与延迟 → 队友使用 Codex 辅助修改代码 → 重新测试并记录效果。Codex 是现场开发与调试工具，**不是**自动识别门牌或决定导航方向的模型；上述实时联调尚未完成验证。
-
-## 参考资料
+## 参考资料与文档
 
 - [ReasonNav 项目主页（CoRL 2025）](https://reasonnav.github.io/)
 - [ReasonNav 官方代码](https://github.com/ReasonNav/ReasonNav)
 - [实验设计](docs/experiment.zh-CN.md)
 - [路线与分工](docs/roadmap.zh-CN.md)
-- [模块接口](docs/interfaces.zh-CN.md)
+- [`main` 的早期模块接口](docs/interfaces.zh-CN.md)
+- [M0 现场结果 PR #1](https://github.com/sceneeeee/room-sign-guided-navigation/pull/1)
+- [M2.3c 冻结场景与离线策略评估（开发分支）](https://github.com/sceneeeee/room-sign-guided-navigation/blob/feat/m2-reasoning/docs/m2-offline-evaluation.zh-CN.md)
+- [M2.3d Prompt v3 开发报告（开发分支）](https://github.com/sceneeeee/room-sign-guided-navigation/blob/feat/m2-reasoning/docs/m23d-prompt-v3.zh-CN.md)
+- [M2.4 流式接口与 Rule 帧门槛修复（开发分支）](https://github.com/sceneeeee/room-sign-guided-navigation/blob/feat/m2-reasoning/docs/m24-streaming.zh-CN.md)
 - [环境部署与 SSH](docs/setup.zh-CN.md)
 
-目前的算法价值首先是**可验证的工程复现与实验对照**，不是声称原创了 OCR+VLM 找房间；OCR 误读、跳号、编号规则不一致以及主动重复观察属于后续需进一步查新验证的研究方向。
+**研究边界：** 人工设计的单步测试成绩和单条件 OCR 现场样本，不代表真实寻房成功率或模型性能优势；工程整合本身也不等于已证明的算法创新。
+
+## 数据与许可证
+
+不要将包含可识别个人信息的原始视频、图片、账户凭据上传到仓库。目前尚未选择开源许可证，公开复用与发布前需明确许可。
