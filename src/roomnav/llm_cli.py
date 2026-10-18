@@ -8,7 +8,10 @@ import argparse
 import json
 from pathlib import Path
 
-from .llm_planner import PROMPT_VERSION, LLMPlanner, PlannerError, build_evidence_snapshot, decide_rule
+from .llm_planner import (
+    PROMPT_VERSIONS, LLMPlanner, PlannerError, build_evidence_snapshot, decide_rule,
+    resolve_prompt_version,
+)
 from .memory import LandmarkMemory
 from .observation import Observation
 from .openai_compatible import OpenAICompatibleModel
@@ -56,6 +59,8 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--temperature", type=float, default=None, help="decode temperature, default 0")
     parser.add_argument("--max-tokens", type=int, default=None, help="maximum model completion tokens")
     parser.add_argument("--json-mode", action="store_true", help="send response_format=json_object when supported")
+    parser.add_argument("--prompt-version", choices=tuple(PROMPT_VERSIONS), default="v2",
+                        help="prompt guide to use; default v2 preserves historical behavior")
     parser.add_argument("--strict", action="store_true", help="exit on model failure instead of rule fallback")
     parser.add_argument("--dry-run", action="store_true", help="print rule comparator, never send a request")
     parser.add_argument("--output-jsonl", type=Path, help="append comparison record to local JSONL")
@@ -68,7 +73,7 @@ def run(args: argparse.Namespace) -> dict:
     rule = decide_rule(snapshot)
     record = {
         "phase": "M2.3b",
-        "prompt_version": PROMPT_VERSION,
+        "prompt_version": resolve_prompt_version(args.prompt_version),
         "mode": "dry-run" if args.dry_run else "openai-compatible",
         "target": snapshot.target,
         "active_segment": snapshot.active_segment,
@@ -84,9 +89,12 @@ def run(args: argparse.Namespace) -> dict:
         temperature=args.temperature, max_tokens=args.max_tokens,
         json_mode=args.json_mode,
     )
-    result = LLMPlanner(model, timeout_s=args.timeout, strict=args.strict).plan_snapshot(snapshot)
+    result = LLMPlanner(
+        model, timeout_s=args.timeout, strict=args.strict, prompt_version=args.prompt_version,
+    ).plan_snapshot(snapshot)
     token_usage = getattr(model, "last_usage", None)
     record.update({
+        "prompt_version": result.prompt_version,
         "llm_result": result.to_dict(),
         "usage": token_usage.to_dict()
             if result.error_kind in (None, "validation_error") and token_usage is not None
@@ -108,7 +116,10 @@ def main(argv: list[str] | None = None) -> None:
                 file.write(printed + "\n")
     except (ValueError, TypeError, OSError, PlannerError) as exc:
         if isinstance(exc, PlannerError):
-            parser.error("LLM failed: " + exc.error_kind + " / " + ", ".join(exc.validation_errors))
+            parser.error(
+                "LLM failed: " + exc.error_kind + " / " + ", ".join(exc.validation_errors)
+                + " / prompt_version=" + exc.prompt_version
+            )
         # Avoid copying raw model prompt or server text into errors.
         if isinstance(exc, OSError):
             parser.error("Could not read/write a local JSONL file")

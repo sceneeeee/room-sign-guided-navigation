@@ -18,8 +18,8 @@ from .baseline import Decision, RoomAction
 from .confirmation import LandmarkConfirmation
 from .llm_backend import TextModel
 from .llm_planner import (
-    DecisionValidationError, EvidenceSnapshot, LLMPlanner, PROMPT_VERSION,
-    decide_rule, parse_decision,
+    DecisionValidationError, EvidenceSnapshot, LLMPlanner,
+    decide_rule, parse_decision, resolve_prompt_version,
 )
 from .observation import Observation
 from .openai_compatible import TokenUsage
@@ -157,6 +157,7 @@ def decision_legality(decision: Decision, snapshot: EvidenceSnapshot) -> tuple[s
 def evaluate_scenario(
     scenario: FrozenScenario, policy: str, *, model: TextModel | None = None,
     timeout_s: float = 30.0,
+    prompt_version: str = "v2",
 ) -> dict:
     """Score independently chosen policy actions; fallback has no model action.
 
@@ -164,6 +165,7 @@ def evaluate_scenario(
     is represented by model_output_legal=false and its validation error codes;
     transport failures have no output to judge (null). No raw text is logged.
     """
+    version = resolve_prompt_version(prompt_version)
     if policy not in ("rule", "qwen"):
         raise ValueError("policy must be rule or qwen")
     if policy == "qwen" and model is None:
@@ -182,7 +184,9 @@ def evaluate_scenario(
         requested_action = decision.action
     else:
         previous_usage = getattr(model, "last_usage", None)
-        result = LLMPlanner(model, timeout_s=timeout_s).plan_snapshot(snapshot)
+        result = LLMPlanner(
+            model, timeout_s=timeout_s, prompt_version=prompt_version,
+        ).plan_snapshot(snapshot)
         decision = result.decision
         backend, model_name = result.backend, result.model
         fallback, errors, error_kind = result.fallback_used, result.validation_errors, result.error_kind
@@ -198,6 +202,7 @@ def evaluate_scenario(
         ) else None
         planner_elapsed = result.elapsed_s
         requested_action = result.requested_action
+        version = result.prompt_version
     elapsed = time.monotonic() - started
     legality_errors = decision_legality(decision, snapshot)
     legal = not legality_errors
@@ -212,6 +217,9 @@ def evaluate_scenario(
         "policy": policy,
         "backend": backend,
         "model": model_name,
+        # Rule rows retain the configured comparison version, as in JSONL v2.
+        # The policy/backend fields distinguish them from model invocations.
+        "prompt_version": version,
         "decision": decision.to_dict(),
         "action": decision.action,
         "requested_action": requested_action,
@@ -283,15 +291,17 @@ def summarize(records: list[dict]) -> dict:
 def evaluate_suite(
     suite: ScenarioSuite, policies: tuple[str, ...] = ("rule",), *,
     model: TextModel | None = None, timeout_s: float = 30.0,
+    prompt_version: str = "v2",
 ) -> dict:
+    version = resolve_prompt_version(prompt_version)
     if not policies or len(set(policies)) != len(policies) or not set(policies) <= {"rule", "qwen"}:
         raise ValueError("Choose distinct rule/qwen policies")
     if "qwen" in policies:
         if model is None:
             raise ValueError("qwen policy requires a text model")
-        LLMPlanner(model, timeout_s=timeout_s)  # Validate deadline before any trial.
+        LLMPlanner(model, timeout_s=timeout_s, prompt_version=prompt_version)
     records = [
-        evaluate_scenario(case, policy, model=model, timeout_s=timeout_s)
+        evaluate_scenario(case, policy, model=model, timeout_s=timeout_s, prompt_version=prompt_version)
         for case in suite.scenarios for policy in policies
     ]
     summaries = {}
@@ -309,7 +319,7 @@ def evaluate_suite(
         "evaluation_kind": "frozen-single-step",
         "suite_version": suite.suite_version,
         "suite_sha256": suite.suite_sha256,
-        "prompt_version": PROMPT_VERSION,
+        "prompt_version": version,
         "scenario_ids": [case.scenario_id for case in suite.scenarios],
         "records": records,
         "summaries": summaries,

@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 from .evaluation import content_hash, evaluate_suite, load_suite
-from .llm_planner import PROMPT_VERSION
+from .llm_planner import PROMPT_VERSIONS, resolve_prompt_version
 from .openai_compatible import OpenAICompatibleModel
 
 
@@ -31,6 +31,8 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--temperature", type=float, default=None)
     parser.add_argument("--max-tokens", type=int, default=None)
     parser.add_argument("--json-mode", action="store_true")
+    parser.add_argument("--prompt-version", choices=tuple(PROMPT_VERSIONS), default="v2",
+                        help="prompt guide to use; default v2 preserves historical behavior")
     parser.add_argument("--output", type=Path, help="write full JSON report")
     parser.add_argument("--output-jsonl", type=Path, help="append one self-contained JSON object per trial")
     return parser
@@ -77,7 +79,7 @@ def run(args: argparse.Namespace) -> dict:
         report = {
             "phase": "M2.3c", "evaluation_kind": "frozen-single-step",
             "suite_version": suite.suite_version, "suite_sha256": suite.suite_sha256,
-            "prompt_version": PROMPT_VERSION,
+            "prompt_version": resolve_prompt_version(args.prompt_version),
             "scenario_ids": [case.scenario_id for case in cases],
             "snapshots": [{"scenario_id": case.scenario_id,
                            "snapshot_sha256": content_hash(case.snapshot.to_dict()),
@@ -85,7 +87,9 @@ def run(args: argparse.Namespace) -> dict:
             "records": [], "summaries": {},
         }
     else:
-        report = evaluate_suite(suite, policies, model=model, timeout_s=args.timeout)
+        report = evaluate_suite(
+            suite, policies, model=model, timeout_s=args.timeout, prompt_version=args.prompt_version,
+        )
     report.update({"mode": "dry-run" if args.dry_run else "evaluation", "config": config,
                    "started_at_utc": started_at})
     return report
