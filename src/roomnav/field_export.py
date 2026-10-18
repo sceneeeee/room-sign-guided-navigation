@@ -72,8 +72,10 @@ def export_session(session_id: str, keyframe_ids: list[str], output_dir: Path) -
         copy2(sample["image_path"], keyframe_dir / f"frame_{sample_id}.jpg")
 
     counts = Counter(row["verdict"] for row in rows)
+    condition_counts = Counter(row["condition"] or "未填写条件" for row in rows)
     eligible = [row for row in rows if row["room_truth"] and row["verdict"] in {"exact", "wrong", "no_text"}]
     exact = sum(row["verdict"] == "exact" for row in eligible)
+    condition_summary = "".join(f"- {condition}：{count} 帧\n" for condition, count in condition_counts.items())
     summary = (
         f"# 现场会话 {session_id}\n\n"
         f"- 保存样本：{len(rows)}\n"
@@ -81,6 +83,8 @@ def export_session(session_id: str, keyframe_ids: list[str], output_dir: Path) -
         f"- 人工判断分布：准确 {counts['exact']}、错误 {counts['wrong']}、无文字 {counts['no_text']}、不确定 {counts['uncertain']}\n"
         f"- 有实物真值且可计入的完整编号 Exact Match：{exact}/{len(eligible)}\n"
         f"- 已选关键帧：{', '.join(selected) if selected else '无'}\n\n"
+        "## 按试次记录的帧数\n\n"
+        f"{condition_summary}\n"
         "以上为待审阅导出；公开前检查 CSV 文字、每张图片及现场采集许可。"
         "未判断样本和不确定样本不计入 Exact Match 分母。\n"
     )

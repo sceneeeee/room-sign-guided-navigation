@@ -174,7 +174,7 @@ with gr.Blocks(title="RoomNav 现场门牌识别", fill_width=True) as demo:
                     test_photo = gr.Button("识别这张照片")
             condition = gr.Textbox(
                 label="本轮采集条件（每次 Record 前填写）",
-                placeholder="LSS101 | 距门2.0m | 正面0° | 相机高1.0m | 第1轮",
+                placeholder="LSS101-A1 | 距门2.0m | 正面0° | 相机高1.0m",
             )
 
         with gr.Column(scale=5, min_width=420, elem_id="results-panel"):
