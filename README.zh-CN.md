@@ -1,6 +1,6 @@
 # 基于门牌与指示牌的室内导航（Room & Sign-Guided Indoor Navigation）
 
-[English](README.md) · **项目状态（2026-10-20）：M0 单条件现场结果已在 PR #1 修正；M2.1–M2.4 已在开发分支完成；M1/M3/M4 待完成**
+[English](README.md) · **项目进度（2026-10-21）：M0 现场采集与复核流程已通过 PR #1 合并至 `main`；M2.1–M2.4 在独立开发分支完成；M1/M3/M4 尚未完成**
 
 ## 研究目标与边界
 
@@ -8,17 +8,17 @@
 
 第一阶段采用**RGB 摄像头 + 人在回路（human-in-the-loop）**：人手持手机或 USB 摄像头移动，MacBook 提供交互并通过 SSH 连接远程 OCR；计划由感知模块记录实体门牌，再由规则或文本 LLM 提出下一步观察建议，由人执行。**完整的感知—推理—行动闭环尚未集成。** 当前不使用 Frogbot、深度、LiDAR、SLAM 或 Nav2。
 
-## 开发进度快照（2026-10-20）
+## 开发进度快照（2026-10-21）
 
 **请区分项目进度与 `main` 实际可运行的代码：**
 
-- **`main`（本次 PR 的基线）：** 只有早期浏览器摄像头 / Gradio / RapidOCR 原型和推理脚手架，尚不包含完整 M2.4 流式模块。
-- **[PR #1 — M0 现场采集与实验结果](https://github.com/sceneeeee/room-sign-guided-navigation/pull/1)：** 本分支包含定时录制、保存实际采样帧和 OCR、人工复核与导出，以及修正后的现场实验记录；截至本快照仍待合并验收。
-- **[`feat/m2-reasoning`](https://github.com/sceneeeee/room-sign-guided-navigation/tree/feat/m2-reasoning)：** M2.1–M2.4 已开发、提交并推送，M2.4 对应 commit `65c7e26`；**尚未合并到 `main`**。下面提到的 M2 命令、文档与测试结果属于该开发分支。
+- **`main`（当前分支）：** 已通过 PR #1 合并 M0 的浏览器/Gradio/RapidOCR 定时采样、采样帧与 OCR 日志、人工复核及 CSV/关键帧导出；**新增录制保存无损 PNG**，2026-10-18 已采集的历史样本仍为 JPEG。`main` **尚不包含** M2.4 流式推理与完整 M1/M3 寻房闭环。
+- **[PR #1 — M0 现场采集与实验结果](https://github.com/sceneeeee/room-sign-guided-navigation/pull/1)：** 已于 **2026-10-20 合并到 `main`**，合并提交 [`c247107`](https://github.com/sceneeeee/room-sign-guided-navigation/commit/c2471077cba6be5b393ffd4fb905c9e46d26f672)。此前 Review 要求的真值补录与统计口径、后续无损保存、Gradio 版本固定及录制复测均已处理；现场旧 JPG 未修改。
+- **[`feat/m2-reasoning`](https://github.com/sceneeeee/room-sign-guided-navigation/tree/feat/m2-reasoning)：** M2.1–M2.4 已实现并推送（M2.4 功能提交 `65c7e26`），**尚未合并进 `main`**；下述 M2 命令和实验结果属于此分支。该分支也**尚未同步 PR #1 合并后的 M0 采集/复核代码**。
 
 **实际完成情况与限制：**
 
-- **M0 · 有限现场验证：** 2026-10-18，使用**手机 → Camo → MacBook 浏览器 → SSH → Linux RapidOCR**，在约 **2 m、正面、镜头高 1.0 m** 的单一条件下，对实物门牌 `LSS101` 完成 **1 次定点 Record、共 6 张采样帧**。测试者确认六帧均对应实物 `LSS101`；逐帧完整编号识别为 **5/6（83.3%）**，1 帧无文字。远端 OCR 耗时 **0.54–1.09 秒/帧**，不含端到端传输与显示。这只覆盖一扇门、一个条件，不能外推为其他门牌或现场条件的准确率。
+- **M0 · 有限现场验证：** 2026-10-18，使用**手机 → Camo → MacBook 浏览器 → SSH → Linux RapidOCR**，在约 **2 m、正面、镜头高 1.0 m** 的单一条件下，对实物门牌 `LSS101` 完成 **1 次定点 Record、共 6 张采样帧**。测试者确认六帧均对应实物 `LSS101`；逐帧完整编号识别为 **5/6（83.3%）**，1 帧无文字。远端 OCR 耗时 **0.54–1.09 秒/帧**，不含端到端传输与显示。这只覆盖一扇门、一个条件，不能外推为其他门牌或现场条件的准确率。 **这六帧来自一次 Record，不是六次独立试验；旧记录为有损 JPG，后续代码改为 PNG。**
 - **M1 · 待开发：** 从原始 OCR 提取完整房号、区分不同物理门牌、跨帧关联和去重，为每条观测提供可信的 `frame_id`、`observation_id`、`landmark_id`。首版可以人工标注关联，**不能仅凭 OCR 字符串相同就认定是同一扇门**。
 - **M2 · 开发分支已独立实现：** M2.1 `LandmarkMemory`；M2.2 编号规则基线；M2.3a 受约束文本 LLM Planner 与安全回退；M2.3b 本地 Ollama/Qwen3-4B；M2.3c 冻结 20 场景评估；M2.3d 可选 Prompt v2/v3（**v2 默认，v3 策略效果仍不稳定**）；M2.4 JSONL/标准输入流式观测、增量规则决策与同帧重复计数修复。**本地 WSL 全量 194 项单元测试通过**。模拟 `FB541 → FB543 → FB545` 回放可依次返回 `REOBSERVE` / `VERIFY_TARGET` / 人工确认后 `FOUND`，但这**不是现场寻房成功案例**。
 - **历史离线对照（Prompt v2）：** 20 个**人工设计、冻结的单步场景**中，旧 Rule **19/20** 动作合法且可接受；Qwen **10/20** 可接受、**20/20** 合法、**0** 次 fallback、**17/20** 弃权。M2.4 修复已知同帧 Bug 后，Rule 在**同一套已暴露**场景上回归为 **20/20**；这是修复回归，**不是独立泛化验证**。Prompt v3 只有 5 次开发检查，不能据此推断真实策略更优。
@@ -40,7 +40,7 @@ LandmarkMemory → Rule / 可选文本 Qwen     [M2：开发分支独立可运�
 逐门搜索 / Rule / 文本 LLM 受控对照        [M4：待实验]
 ~~~
 
-浏览器按约 **1.5 秒/帧**采样，不是连续 30 FPS 视频。每次 Record 先用约 5 秒稳定相机，再采样和保存约 12 秒并自动停止；实际采样帧及未经核验的 OCR 文本保存在 Linux 本地 `data/live_sessions/`，供人工逐帧复核。走廊段与左右侧可以人工标注，不代表机器人定位、自动建图或目标位置真值。
+浏览器以约 **1.5 秒/帧**采样，而非 30 FPS 连续视频。每次 Record 先稳定镜头约 5 秒，再采样、OCR、保存约 12 秒并自动停止。**当前 `main` 已支持保存后续 PNG 无损采样帧、原始 OCR、人工复核及导出**；Gradio UI 依赖固定为 **6.30.0**。原始数据位于 Linux 本地 `data/live_sessions/`，2026-10-18 的既有 JPG 不会自动转换。OCR 不是人工确认真值，`segment_id` / `side` 可人工标注，不代表定位或 SLAM。
 
 ## 快速开始
 
@@ -76,7 +76,7 @@ python -m unittest discover -s tests -q
 
 | 阶段 | 关键工作 | 当前状态 |
 | --- | --- | --- |
-| **M0 · 取帧/OCR** | 远程文字识别、现场采样、逐帧保存和人工复核 | PR #1 含一次 LSS101 现场记录和升级版 UI；截至 2026-10-20 待合并验收 |
+| **M0 · 取帧/OCR** | 远程 OCR、定时取帧、PNG 保存、人工复核和现场导出 | **PR #1 已合并 `main`**；LSS101 单条件 1 次 Record / 6 帧，5/6 逐帧完整识别，其他条件仍待验证 |
 | **M1 · 视觉感知** | 完整房号提取、同门跨帧关联、不同门牌去重与观测 ID | **队友下一阶段重点**，未完成 |
 | **M2 · 记忆与策略** | Rule / 文本 Qwen、离线评估、流式 JSONL 决策 | **M2.1–M2.4 已在开发分支完成**，尚未接真实 M1 输入 |
 | **M3 · 现场寻房闭环** | 将 M1 输出接入 M2.4，由人执行观察建议 | 尚未集成 |
@@ -86,7 +86,7 @@ python -m unittest discover -s tests -q
 - **成员 B（感知/现场）：** 维护 M0 采集与可复现实验记录，继续开发 M1 完整门牌提取、物理门关联、真实观测 ID 和现场测试。
 - **共同：** 固定 `Observation` 数据契约，区分 OCR 原始证据与人工确认，分析失败案例并完成多门牌实地演示。
 
-**近期工作：** 完成 PR #1 合并验收；随后按 [M2.4 Observation 接口](https://github.com/sceneeeee/room-sign-guided-navigation/blob/feat/m2-reasoning/docs/m24-streaming.zh-CN.md) 开发 M1。M1 至少测试三扇不同实体门，输出真实 `frame_id` / 显式 `landmark_id` 与可回放 JSONL，再进行 M3 集成。此处的进度快照**不表示 M2 已合并**。
+**近期工作：** 队友从最新 `main` 创建独立 M1 分支，完成完整房号提取、可靠 `frame_id` / `observation_id`、同一实体门的稳定 `landmark_id` 关联与可回放 JSONL，按 [M2.4 Observation 接口](https://github.com/sceneeeee/room-sign-guided-navigation/blob/feat/m2-reasoning/docs/m24-streaming.zh-CN.md) 输出；先用**至少 3 扇不同实体门**验证，并保留误读/漏检样本。随后由成员 A 接入 M2.4，开始 M3 的人机闭环联调。**M1/M3 尚未完成，M2 也尚未合并。**
 
 ## 参考资料与文档
 
@@ -96,7 +96,9 @@ python -m unittest discover -s tests -q
 - [1F 手机 + Camo 现场测试与上传完整 SOP](docs/field-test-sop-1f.zh-CN.md)
 - [路线与分工](docs/roadmap.zh-CN.md)
 - [`main` 的早期模块接口](docs/interfaces.zh-CN.md)
-- [M0 现场结果 PR #1](https://github.com/sceneeeee/room-sign-guided-navigation/pull/1)
+- [M0 采集与人工复核实现：已合并 PR #1](https://github.com/sceneeeee/room-sign-guided-navigation/pull/1)
+- [LSS101 现场实验记录](docs/field-tests/2026-10-18-1f.md)
+- [1F 手机 + Camo 现场测试 SOP](docs/field-test-sop-1f.zh-CN.md)
 - [M2.3c 冻结场景与离线策略评估（开发分支）](https://github.com/sceneeeee/room-sign-guided-navigation/blob/feat/m2-reasoning/docs/m2-offline-evaluation.zh-CN.md)
 - [M2.3d Prompt v3 开发报告（开发分支）](https://github.com/sceneeeee/room-sign-guided-navigation/blob/feat/m2-reasoning/docs/m23d-prompt-v3.zh-CN.md)
 - [M2.4 流式接口与 Rule 帧门槛修复（开发分支）](https://github.com/sceneeeee/room-sign-guided-navigation/blob/feat/m2-reasoning/docs/m24-streaming.zh-CN.md)
