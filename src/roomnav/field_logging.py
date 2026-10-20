@@ -37,7 +37,7 @@ def _append_jsonl(path: Path, record: dict) -> None:
 
 
 def save_sample(session_id: str, frame, raw_ocr: str, processing_s: float, source: str, condition: str = "") -> dict:
-    """Save the exact RGB frame that produced an OCR result."""
+    """Save a lossless RGB copy of the frame that produced an OCR result."""
     if source not in {"live", "photo"}:
         raise ValueError("Invalid source")
     from PIL import Image
@@ -46,10 +46,10 @@ def save_sample(session_id: str, frame, raw_ocr: str, processing_s: float, sourc
     with _lock:
         existing = _read_jsonl(folder / "samples.jsonl")
         sample_id = f"{len(existing) + 1:06d}"
-        relative_image = f"frames/{sample_id}.jpg"
+        relative_image = f"frames/{sample_id}.png"
         image_path = folder / relative_image
         image_path.parent.mkdir(parents=True, exist_ok=True)
-        Image.fromarray(frame).convert("RGB").save(image_path, format="JPEG", quality=90)
+        Image.fromarray(frame).convert("RGB").save(image_path, format="PNG")
         record = {
             "sample_id": sample_id,
             "recorded_at": datetime.now(timezone.utc).isoformat(),

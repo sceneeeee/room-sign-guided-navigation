@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import numpy as np
+from PIL import Image
 
 from roomnav import field_logging
 
@@ -21,7 +22,9 @@ class FieldLoggingTests(unittest.TestCase):
                 self.assertEqual([first["sample_id"], second["sample_id"]], ["000001", "000002"])
                 self.assertEqual(len(field_logging.list_samples(session)), 2)
                 self.assertEqual(first["condition"], "LSS101 | 2m | h1m")
-                self.assertTrue(Path(field_logging.get_sample(session, "000001")["image_path"]).is_file())
+                image_path = Path(field_logging.get_sample(session, "000001")["image_path"])
+                self.assertEqual(image_path.suffix, ".png")
+                np.testing.assert_array_equal(np.asarray(Image.open(image_path)), frame)
                 field_logging.save_judgment(session, "000001", "wrong", "LSS101", "S/5 confused")
                 field_logging.save_judgment(session, "000001", "uncertain", "", "need to recheck")
                 self.assertEqual(field_logging.latest_judgment(session, "000001")["verdict"], "uncertain")

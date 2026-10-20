@@ -69,7 +69,8 @@ def export_session(session_id: str, keyframe_ids: list[str], output_dir: Path) -
     keyframe_dir.mkdir()
     for sample_id in selected:
         sample = field_logging.get_sample(session_id, sample_id)
-        copy2(sample["image_path"], keyframe_dir / f"frame_{sample_id}.jpg")
+        image_path = Path(sample["image_path"])
+        copy2(image_path, keyframe_dir / f"frame_{sample_id}{image_path.suffix}")
 
     counts = Counter(row["verdict"] for row in rows)
     condition_counts = Counter(row["condition"] or "未填写条件" for row in rows)

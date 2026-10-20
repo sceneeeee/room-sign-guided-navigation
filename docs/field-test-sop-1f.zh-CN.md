@@ -96,7 +96,7 @@ mkdir -p docs/field-tests/assets/2026-10-18-1f
 cp docs/field-tests/TEMPLATE.zh-CN.md docs/field-tests/2026-10-18-1f.md
 # 编辑报告，填入实测条件、summary.md 的统计、失败案例和代码哈希
 cp "outputs/field_exports/$FIELD_SESSION_ID/review_public_candidate.csv" docs/field-tests/2026-10-18-1f-review.csv
-cp "outputs/field_exports/$FIELD_SESSION_ID/keyframes/"*.jpg docs/field-tests/assets/2026-10-18-1f/
+cp "outputs/field_exports/$FIELD_SESSION_ID/keyframes/"frame_* docs/field-tests/assets/2026-10-18-1f/
 git status --short
 git add docs/field-tests/2026-10-18-1f.md docs/field-tests/2026-10-18-1f-review.csv docs/field-tests/assets/2026-10-18-1f/
 git diff --cached --check
