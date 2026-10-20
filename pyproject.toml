@@ -14,7 +14,7 @@ dependencies = []
 
 [project.optional-dependencies]
 vision = ["rapidocr>=3.0", "onnxruntime>=1.17", "pillow>=10"]
-ui = ["gradio>=5.0"]
+ui = ["gradio==6.30.0"]
 development = ["pytest>=8.0"]
 
 [project.scripts]

@@ -1,0 +1,7 @@
+sample_id,source,condition,room_truth,raw_ocr,verdict
+000001,live,LSS101-A1 | 距门2.0m | 正面0° | 高1.0m,LSS101,,no_text
+000002,live,LSS101-A1 | 距门2.0m | 正面0° | 高1.0m,LSS101,LSS101,exact
+000003,live,LSS101-A1 | 距门2.0m | 正面0° | 高1.0m,LSS101,LSS101,exact
+000004,live,LSS101-A1 | 距门2.0m | 正面0° | 高1.0m,LSS101,LSS101,exact
+000005,live,LSS101-A1 | 距门2.0m | 正面0° | 高1.0m,LSS101,LSS101,exact
+000006,live,LSS101-A1 | 距门2.0m | 正面0° | 高1.0m,LSS101,LSS101,exact
