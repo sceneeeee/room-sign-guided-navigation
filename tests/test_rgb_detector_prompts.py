@@ -7,8 +7,30 @@ from unittest.mock import patch
 import numpy as np
 
 from roomnav.rgb_perception import YOLOWorldDetector
-from tests.test_rgb_perception import FakeYOLO, FakeTensor
 from types import SimpleNamespace
+
+
+class FakeTensor:
+    def __init__(self, values):
+        self.values = values
+
+    def cpu(self):
+        return self
+
+    def tolist(self):
+        return self.values
+
+
+class FakeYOLO:
+    def __init__(self, boxes=None):
+        self.classes = None
+        self.boxes = boxes
+
+    def set_classes(self, classes):
+        self.classes = classes
+
+    def predict(self, **kwargs):
+        return [SimpleNamespace(boxes=self.boxes)]
 
 
 class PromptProfileTests(unittest.TestCase):
