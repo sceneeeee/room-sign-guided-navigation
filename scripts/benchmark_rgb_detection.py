@@ -12,6 +12,7 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 import json
 import platform
+import re
 from pathlib import Path
 import statistics
 from time import perf_counter
@@ -60,6 +61,8 @@ def _args(argv=None):
     parser.add_argument("--device", default=None, help="e.g. cuda:0 or cpu")
     parser.add_argument("--image-size", type=int, default=640)
     parser.add_argument("--output", type=Path, default=Path("outputs/detection-benchmark.json"))
+    parser.add_argument("--save-overlays", action="store_true",
+                        help="Save private annotated previews under OUTPUT-parent/overlays/")
     parser.add_argument("--validate-only", action="store_true",
                         help="Validate manifest/images without installing or loading a model")
     return parser.parse_args(argv)
@@ -93,6 +96,38 @@ def _load_image(root: Path, relative: str):
     # Paths were checked to stay inside --image-root by read_manifest / validate.
     with Image.open(root / relative) as picture:
         return np.asarray(picture.convert("RGB"), dtype=np.uint8)
+
+
+def _save_preview(frame_rgb, truth, detections, path: Path, threshold: float) -> None:
+    """Render proposal boxes into a PRIVATE local PNG for manual inspection.
+
+    A pictured box is not a validated room, sign or traversable door.
+    """
+    import numpy as np
+    from PIL import Image, ImageDraw
+
+    canvas = Image.fromarray(np.asarray(frame_rgb).copy(), mode="RGB")
+    draw = ImageDraw.Draw(canvas)
+    width, height = canvas.size
+
+    def pixel_box(norm):
+        return tuple(round(norm[j] * (width if j % 2 == 0 else height)) for j in range(4))
+
+    for box in truth:
+        coords = pixel_box(box.bbox_xyxy_norm)
+        draw.rectangle(coords, outline="#ffffff", width=2)
+        draw.text((coords[0] + 3, max(0, coords[1] - 12)),
+                  f"GT {box.category}", fill="#ffffff")
+    for box in detections:
+        if box.score < threshold:
+            continue
+        coords = pixel_box(box.bbox_xyxy_norm)
+        color = "#ed5545" if box.category == "door" else "#48cffa"
+        draw.rectangle(coords, outline=color, width=3)
+        draw.text((coords[0] + 3, min(height - 12, coords[1] + 4)),
+                  f"{box.category} {box.score:.2f}", fill=color)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    canvas.save(path, format="PNG")
 
 
 def run_comparison(args, *, detector_factory=YOLOWorldDetector) -> dict:
@@ -179,6 +214,16 @@ def run_comparison(args, *, detector_factory=YOLOWorldDetector) -> dict:
                     image: [asdict(detection) for detection in detections]
                     for image, detections in by_image.items()
                 }
+                if args.save_overlays:
+                    variant = re.sub(r"[^A-Za-z0-9_.-]", "_", weights) + "__" + name
+                    saved = {}
+                    for index, frame in enumerate(frames):
+                        suffix = __import__("hashlib").sha256(frame.image.encode()).hexdigest()[:10]
+                        output = args.output.parent / "overlays" / variant / f"{index:04d}_{suffix}.png"
+                        _save_preview(image_cache[frame.image], frame.annotations,
+                                      by_image[frame.image], output, min(args.thresholds))
+                        saved[frame.image] = str(output)
+                    entry["overlay_images"] = saved
                 if labelled:
                     entry["metrics"] = score_dataset(
                         frames, by_image, thresholds=report["thresholds"],
