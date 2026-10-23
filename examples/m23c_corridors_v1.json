@@ -1,0 +1,386 @@
+{
+  "suite_version": "m2.3c-corridors-v1",
+  "scenarios": [
+    {
+      "scenario_id": "ascending",
+      "tags": ["ascending","target_not_observed"],
+      "evidence": {
+        "target": "EF734",
+        "active_segment": "A",
+        "observations": [
+          {"kind":"room","text":"EF731","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"d1:f1","observation_id":"od1:f1"},
+          {"kind":"room","text":"EF731","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"d1:f2","observation_id":"od1:f2"},
+          {"kind":"room","text":"EF732","segment_id":"A","side":"unknown","landmark_id":"d2","frame_id":"d2:f1","observation_id":"od2:f1"},
+          {"kind":"room","text":"EF732","segment_id":"A","side":"unknown","landmark_id":"d2","frame_id":"d2:f2","observation_id":"od2:f2"}
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": ["CONTINUE_ALONG_SEGMENT"],
+        "rationale": "两个不同门牌局部递增，继续采集是有依据的探索建议；未见目标不能验证或宣称找到。",
+        "ground_truth": "人工构造的直走廊按行进顺序递增，EF734 位于尚未观察的前段。真值不授予目标验证权限。"
+      }
+    },
+    {
+      "scenario_id": "descending",
+      "tags": ["descending","target_not_observed"],
+      "evidence": {
+        "target": "GH405",
+        "active_segment": "A",
+        "observations": [
+          {"kind":"room","text":"GH409","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"d1:f1","observation_id":"od1:f1"},
+          {"kind":"room","text":"GH409","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"d1:f2","observation_id":"od1:f2"},
+          {"kind":"room","text":"GH407","segment_id":"A","side":"unknown","landmark_id":"d2","frame_id":"d2:f1","observation_id":"od2:f1"},
+          {"kind":"room","text":"GH407","segment_id":"A","side":"unknown","landmark_id":"d2","frame_id":"d2:f2","observation_id":"od2:f2"}
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": ["CONTINUE_ALONG_SEGMENT"],
+        "rationale": "行进顺序递减，目标编号在下降方向更远处，允许暂定继续观察。",
+        "ground_truth": "人工构造的反向遍历走廊编号下降，GH405 尚未入镜。"
+      }
+    },
+    {
+      "scenario_id": "odd_left",
+      "tags": ["parity","ascending"],
+      "evidence": {
+        "target": "JK304",
+        "active_segment": "A",
+        "observations": [
+          {"kind":"room","text":"JK301","segment_id":"A","side":"left","landmark_id":"d1","frame_id":"d1:f1","observation_id":"od1:f1"},
+          {"kind":"room","text":"JK301","segment_id":"A","side":"left","landmark_id":"d1","frame_id":"d1:f2","observation_id":"od1:f2"},
+          {"kind":"room","text":"JK303","segment_id":"A","side":"left","landmark_id":"d2","frame_id":"d2:f1","observation_id":"od2:f1"},
+          {"kind":"room","text":"JK303","segment_id":"A","side":"left","landmark_id":"d2","frame_id":"d2:f2","observation_id":"od2:f2"}
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": ["CHECK_MISSING_OR_OTHER_SIDE"],
+        "rationale": "同侧两个奇数门牌支持暂定检查另一侧；奇偶分边仍是待验证假设。",
+        "ground_truth": "人工构造走廊左奇右偶；JK304 在未观察的右侧。"
+      }
+    },
+    {
+      "scenario_id": "even_right_descending",
+      "tags": ["parity","descending"],
+      "evidence": {
+        "target": "LM617",
+        "active_segment": "A",
+        "observations": [
+          {"kind":"room","text":"LM620","segment_id":"A","side":"right","landmark_id":"d1","frame_id":"d1:f1","observation_id":"od1:f1"},
+          {"kind":"room","text":"LM620","segment_id":"A","side":"right","landmark_id":"d1","frame_id":"d1:f2","observation_id":"od1:f2"},
+          {"kind":"room","text":"LM618","segment_id":"A","side":"right","landmark_id":"d2","frame_id":"d2:f1","observation_id":"od2:f1"},
+          {"kind":"room","text":"LM618","segment_id":"A","side":"right","landmark_id":"d2","frame_id":"d2:f2","observation_id":"od2:f2"}
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": ["CHECK_MISSING_OR_OTHER_SIDE"],
+        "rationale": "同侧偶数递减，目标为奇数，检查对侧或此前间隙是可接受建议。",
+        "ground_truth": "人工构造走廊右偶左奇，反向遍历；LM617 未观察。"
+      }
+    },
+    {
+      "scenario_id": "number_gap",
+      "tags": ["number_jump","target_not_observed"],
+      "evidence": {
+        "target": "NP512",
+        "active_segment": "A",
+        "observations": [
+          {"kind":"room","text":"NP510","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"d1:f1","observation_id":"od1:f1"},
+          {"kind":"room","text":"NP510","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"d1:f2","observation_id":"od1:f2"},
+          {"kind":"room","text":"NP514","segment_id":"A","side":"unknown","landmark_id":"d2","frame_id":"d2:f1","observation_id":"od2:f1"},
+          {"kind":"room","text":"NP514","segment_id":"A","side":"unknown","landmark_id":"d2","frame_id":"d2:f2","observation_id":"od2:f2"}
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": ["CHECK_MISSING_OR_OTHER_SIDE"],
+        "rationale": "观测越过目标编号，检查跳过的门或对侧是合理探索；不能假定跳号必有门。",
+        "ground_truth": "人工构造场景中 NP512 位于此前未采样的位置，当前仅有 510 和 514 的观测。"
+      }
+    },
+    {
+      "scenario_id": "nonmonotonic",
+      "tags": ["irregular_numbering","insufficient_evidence"],
+      "evidence": {
+        "target": "QR708",
+        "active_segment": "A",
+        "observations": [
+          {"kind":"room","text":"QR702","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"d1:f1","observation_id":"od1:f1"},
+          {"kind":"room","text":"QR702","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"d1:f2","observation_id":"od1:f2"},
+          {"kind":"room","text":"QR706","segment_id":"A","side":"unknown","landmark_id":"d2","frame_id":"d2:f1","observation_id":"od2:f1"},
+          {"kind":"room","text":"QR706","segment_id":"A","side":"unknown","landmark_id":"d2","frame_id":"d2:f2","observation_id":"od2:f2"},
+          {"kind":"room","text":"QR704","segment_id":"A","side":"unknown","landmark_id":"d3","frame_id":"d3:f1","observation_id":"od3:f1"},
+          {"kind":"room","text":"QR704","segment_id":"A","side":"unknown","landmark_id":"d3","frame_id":"d3:f2","observation_id":"od3:f2"}
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": ["INSUFFICIENT_EVIDENCE"],
+        "rationale": "未提供回头行走、分支或侧别证据，不单调序列不足以支持当前方向偏好。",
+        "ground_truth": "人工构造的不规则编号走廊；目标位置无法由此观测序列推断。"
+      }
+    },
+    {
+      "scenario_id": "ocr_conflict_neighbor",
+      "tags": ["ocr_conflict"],
+      "evidence": {
+        "target": "ST805",
+        "active_segment": "A",
+        "observations": [
+          {"kind":"room","text":"ST801","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"d1:f1","observation_id":"od1:f1"},
+          {"kind":"room","text":"ST801","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"d1:f2","observation_id":"od1:f2"},
+          {"kind":"room","text":"ST803","segment_id":"A","side":"unknown","landmark_id":"d2","frame_id":"d2:f1","observation_id":"od2:f1"},
+          {"kind":"room","text":"ST809","segment_id":"A","side":"unknown","landmark_id":"d2","frame_id":"d2:f2","observation_id":"od2:f2"}
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": ["REOBSERVE"],
+        "rationale": "相同地标读数冲突，可能改变编号趋势，应先再观察。",
+        "ground_truth": "人工标签 d2 是 ST803，另一读数为 OCR 错误；该标签不提供给策略。"
+      }
+    },
+    {
+      "scenario_id": "ocr_conflict_target",
+      "tags": ["ocr_conflict","suspected_target"],
+      "evidence": {
+        "target": "UV222",
+        "active_segment": "A",
+        "observations": [
+          {"kind":"room","text":"UV222","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"f1","observation_id":"of1"},
+          {"kind":"room","text":"UV228","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"f2","observation_id":"of2"},
+          {"kind":"room","text":"UV222","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"f3","observation_id":"of3"}
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": ["REOBSERVE"],
+        "rationale": "目标读数虽占多数但仍有冲突，多数票不能代替核验。",
+        "ground_truth": "人工标签为 UV228；两次 UV222 为相关 OCR 误读。"
+      }
+    },
+    {
+      "scenario_id": "single_frame_target",
+      "tags": ["single_frame","suspected_target"],
+      "evidence": {
+        "target": "WX315",
+        "active_segment": "A",
+        "observations": [
+          {"kind":"room","text":"WX315","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"f1","observation_id":"of1"}
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": ["REOBSERVE"],
+        "rationale": "单帧疑似目标需再采集，尚不具备多帧验证条件。",
+        "ground_truth": "人工标签为 WX315；策略只有一个未确认帧，不能使用真值。"
+      }
+    },
+    {
+      "scenario_id": "unassociated_target",
+      "tags": ["unassociated","suspected_target"],
+      "evidence": {
+        "target": "YZ410",
+        "active_segment": "A",
+        "observations": [
+          {"kind":"room","text":"YZ410","segment_id":"A","side":"unknown","landmark_id":null,"frame_id":"f1","observation_id":"of1"},
+          {"kind":"room","text":"YZ410","segment_id":"A","side":"unknown","landmark_id":null,"frame_id":"f2","observation_id":"of2"}
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": ["REOBSERVE"],
+        "rationale": "目标读数未关联到物理门，即使两帧也不能确认对应哪个门。",
+        "ground_truth": "两个观测来自同一实际门，但标注未建立地标关联；真值关联不能传给策略。"
+      }
+    },
+    {
+      "scenario_id": "consistent_target",
+      "tags": ["multi_frame","suspected_target"],
+      "evidence": {
+        "target": "AA527",
+        "active_segment": "A",
+        "observations": [
+          {"kind":"room","text":"AA527","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"d1:f1","observation_id":"od1:f1"},
+          {"kind":"room","text":"AA527","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"d1:f2","observation_id":"od1:f2"}
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": ["VERIFY_TARGET"],
+        "rationale": "已观察同一门的两个不同帧，读数一致，下一步应请求人工确认，不能 FOUND。",
+        "ground_truth": "人工标签为 AA527，冻结时还没有人工确认事件。"
+      }
+    },
+    {
+      "scenario_id": "operator_corrects_ocr",
+      "tags": ["human_confirmation","ocr_conflict"],
+      "evidence": {
+        "target": "BB638",
+        "active_segment": "A",
+        "observations": [
+          {"kind":"room","text":"BB633","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"f1","observation_id":"of1"},
+          {"kind":"room","text":"BB638","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"f2","observation_id":"of2"}
+        ],
+        "confirmations": [{"landmark_id":"d1","text":"BB638","confirmed_by":"operator"}]
+      },
+      "oracle": {
+        "acceptable_actions": ["FOUND"],
+        "rationale": "当前快照已有独立人工确认，允许声明记录中的目标已找到。",
+        "ground_truth": "人工确认 d1 为 BB638 已发生；保留原始 OCR 冲突。"
+      }
+    },
+    {
+      "scenario_id": "empty_evidence",
+      "tags": ["insufficient_evidence"],
+      "evidence": {
+        "target": "CC741",
+        "active_segment": "A",
+        "observations": [
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": ["INSUFFICIENT_EVIDENCE"],
+        "rationale": "没有任何观测，无法支持方向建议或目标核验。",
+        "ground_truth": "目标位置未指定；场景真值是决策时没有证据。"
+      }
+    },
+    {
+      "scenario_id": "one_distinct_door",
+      "tags": ["insufficient_evidence","repeated_door"],
+      "evidence": {
+        "target": "DD854",
+        "active_segment": "A",
+        "observations": [
+          {"kind":"room","text":"DD852","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"d1:f1","observation_id":"od1:f1"},
+          {"kind":"room","text":"DD852","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"d1:f2","observation_id":"od1:f2"},
+          {"kind":"room","text":"DD852","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"d1:f3","observation_id":"od1:f3"}
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": ["INSUFFICIENT_EVIDENCE"],
+        "rationale": "三个帧只有一个门，不能当作三个不同门建立趋势。",
+        "ground_truth": "人工构造场景只采样了一个物理门，DD854 尚未出现。"
+      }
+    },
+    {
+      "scenario_id": "separate_segments",
+      "tags": ["cross_segment","insufficient_evidence"],
+      "evidence": {
+        "target": "EE967",
+        "active_segment": "B",
+        "observations": [
+          {"kind":"room","text":"EE963","segment_id":"A","side":"unknown","landmark_id":"a1","frame_id":"a1:f1","observation_id":"oa1:f1"},
+          {"kind":"room","text":"EE963","segment_id":"A","side":"unknown","landmark_id":"a1","frame_id":"a1:f2","observation_id":"oa1:f2"},
+          {"kind":"room","text":"EE965","segment_id":"B","side":"unknown","landmark_id":"b1","frame_id":"b1:f1","observation_id":"ob1:f1"},
+          {"kind":"room","text":"EE965","segment_id":"B","side":"unknown","landmark_id":"b1","frame_id":"b1:f2","observation_id":"ob1:f2"}
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": ["INSUFFICIENT_EVIDENCE"],
+        "rationale": "不同走廊不能拼成当前走廊的编号趋势，B 中仅一个可靠门牌。",
+        "ground_truth": "两条不相连的模拟走廊各有一个已观察门，当前在 B。"
+      }
+    },
+    {
+      "scenario_id": "different_prefix",
+      "tags": ["prefix_mismatch","insufficient_evidence"],
+      "evidence": {
+        "target": "GG205",
+        "active_segment": "A",
+        "observations": [
+          {"kind":"room","text":"FF201","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"d1:f1","observation_id":"od1:f1"},
+          {"kind":"room","text":"FF201","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"d1:f2","observation_id":"od1:f2"},
+          {"kind":"room","text":"FF203","segment_id":"A","side":"unknown","landmark_id":"d2","frame_id":"d2:f1","observation_id":"od2:f1"},
+          {"kind":"room","text":"FF203","segment_id":"A","side":"unknown","landmark_id":"d2","frame_id":"d2:f2","observation_id":"od2:f2"}
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": ["INSUFFICIENT_EVIDENCE"],
+        "rationale": "FF 编号的局部趋势不能推出 GG 目标的方向，尚无连接证据。",
+        "ground_truth": "目标 GG205 属于另一编号区，但策略没有看到连接标志。"
+      }
+    },
+    {
+      "scenario_id": "same_frame_repeated",
+      "tags": ["same_frame","suspected_target"],
+      "evidence": {
+        "target": "HH316",
+        "active_segment": "A",
+        "observations": [
+          {"kind":"room","text":"HH316","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"f1","observation_id":"ofirst"},
+          {"kind":"room","text":"HH316","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"f1","observation_id":"osecond"}
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": ["REOBSERVE"],
+        "rationale": "两个 observation_id 对应同一 frame_id，不构成多帧；必须再采集。",
+        "ground_truth": "仅一张实际图片被两个识别记录引用；真值为只有一个捕获来源。"
+      }
+    },
+    {
+      "scenario_id": "side_conflict_target",
+      "tags": ["side_conflict","suspected_target"],
+      "evidence": {
+        "target": "JJ427",
+        "active_segment": "A",
+        "observations": [
+          {"kind":"room","text":"JJ427","segment_id":"A","side":"left","landmark_id":"d1","frame_id":"f1","observation_id":"of1"},
+          {"kind":"room","text":"JJ427","segment_id":"A","side":"right","landmark_id":"d1","frame_id":"f2","observation_id":"of2"}
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": ["REOBSERVE"],
+        "rationale": "同一门的左右注释冲突，应先解决关联或侧别问题，不能请求目标验证。",
+        "ground_truth": "人工构造场景中两帧错误地复用了地标关联，侧别冲突必须保留。"
+      }
+    },
+    {
+      "scenario_id": "target_absent",
+      "tags": ["target_absent","ascending","target_not_observed"],
+      "evidence": {
+        "target": "KK535",
+        "active_segment": "A",
+        "observations": [
+          {"kind":"room","text":"KK531","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"d1:f1","observation_id":"od1:f1"},
+          {"kind":"room","text":"KK531","segment_id":"A","side":"unknown","landmark_id":"d1","frame_id":"d1:f2","observation_id":"od1:f2"},
+          {"kind":"room","text":"KK533","segment_id":"A","side":"unknown","landmark_id":"d2","frame_id":"d2:f1","observation_id":"od2:f1"},
+          {"kind":"room","text":"KK533","segment_id":"A","side":"unknown","landmark_id":"d2","frame_id":"d2:f2","observation_id":"od2:f2"}
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": ["CONTINUE_ALONG_SEGMENT","INSUFFICIENT_EVIDENCE"],
+        "rationale": "快照未提供走廊尽头或完整目录；允许暂定继续，也允许保守弃权，不能由隐藏真值判断目标不存在。",
+        "ground_truth": "完整模拟走廊不包含 KK535，但其尽头和完整门牌列表尚未观察；此信息只用于标识场景，不应泄漏。"
+      }
+    },
+    {
+      "scenario_id": "direction_sign_only",
+      "tags": ["sign","insufficient_room_evidence","target_not_observed"],
+      "evidence": {
+        "target": "MN914",
+        "active_segment": "A",
+        "observations": [
+          {"kind":"sign","text":"MN900-920 straight ahead","segment_id":"A","side":"front","landmark_id":"s1","frame_id":"f1","observation_id":"o1"},
+          {"kind":"sign","text":"MN900-920 straight ahead","segment_id":"A","side":"front","landmark_id":"s1","frame_id":"f2","observation_id":"o2"}
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": ["CONTINUE_ALONG_SEGMENT","INSUFFICIENT_EVIDENCE"],
+        "rationale": "明确的前方范围指示支持继续观察；标牌也可能过时，缺乏门牌证据时保守弃权亦可接受。",
+        "ground_truth": "模拟标牌准确且指向前方编号区；未观察目标。此 oracle 允许 Rule 不使用的标牌探索动作。"
+      }
+    }
+  ]
+}
