@@ -55,27 +55,41 @@ class YOLOWorldDetector:
     """
 
     PROMPTS = ("door", "room number sign", "directional sign")
+    DEFAULT_CATEGORIES = ("door", "sign", "sign")
 
     def __init__(self, *, weights: str = "yolov8s-world.pt",
                  confidence: float = 0.3, image_size: int = 640,
-                 device: str | None = None, model=None):
+                 device: str | None = None, model=None,
+                 prompts: tuple[str, ...] | None = None,
+                 categories: tuple[str | None, ...] | None = None):
         if type(confidence) not in (float, int) or not 0 < confidence <= 1:
             raise ValueError("confidence must be in (0,1]")
         if type(image_size) is not int or not 32 <= image_size <= 2048:
             raise ValueError("image_size out of bounds")
+        self.prompts = self.PROMPTS if prompts is None else tuple(prompts)
+        self.categories = self.DEFAULT_CATEGORIES if categories is None else tuple(categories)
+        if (not self.prompts or len(self.prompts) != len(self.categories)
+                or any(not isinstance(p, str) or not p.strip() for p in self.prompts)):
+            raise ValueError("Prompts and categories must be nonempty and aligned")
+        if any(c not in ("door", "sign", None) for c in self.categories):
+            raise ValueError("Prompt categories must be door, sign or None (ignore)")
         self.confidence = float(confidence)
         self.image_size = image_size
         self.device = device
         if model is None:
             try:
-                from ultralytics import YOLO
+                from ultralytics import YOLO, YOLOE
             except ImportError as e:
                 raise RuntimeError(
                     "Install the optional detection dependencies: pip install -e '.[detection]'"
                 ) from e
-            model = YOLO(weights)
+            # YOLOE text-prompt checkpoints use the same set_classes API,
+            # but must be loaded through YOLOE rather than YOLO.
+            from pathlib import Path
+            family = YOLOE if Path(weights).name.lower().startswith("yoloe-") else YOLO
+            model = family(weights)
         self.model = model
-        self.model.set_classes(list(self.PROMPTS))
+        self.model.set_classes(list(self.prompts))
 
     def detect(self, frame_rgb) -> list[Detection]:
         import numpy as np
@@ -109,7 +123,10 @@ class YOLOWorldDetector:
             if type(class_id) not in (float, int) or not isfinite(class_id):
                 continue
             cls = int(class_id)
-            if cls not in (0, 1, 2) or class_id != cls:
+            if not 0 <= cls < len(self.categories) or class_id != cls:
+                continue
+            category = self.categories[cls]
+            if category is None:
                 continue
             if (len(coords) != 4 or any(not isfinite(v) for v in coords)):
                 continue
@@ -120,6 +137,6 @@ class YOLOWorldDetector:
             bottom = max(0.0, min(1.0, bottom / height))
             if right <= left or bottom <= top:
                 continue
-            detected.append(Detection("door" if cls == 0 else "sign",
+            detected.append(Detection(category,
                                       (left, top, right, bottom), float(score)))
         return sorted(detected, key=lambda det: det.score, reverse=True)
