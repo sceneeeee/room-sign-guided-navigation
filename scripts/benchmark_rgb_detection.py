@@ -75,6 +75,18 @@ def _gpu_sync() -> None:
         torch.cuda.synchronize()
 
 
+def _release_gpu_cache() -> None:
+    """Release one variant's model memory before attempting the next one."""
+    import gc
+    gc.collect()
+    try:
+        import torch
+    except ImportError:
+        return
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+
 def _load_image(root: Path, relative: str):
     import numpy as np
     from PIL import Image
@@ -135,7 +147,11 @@ def run_comparison(args, *, detector_factory=YOLOWorldDetector) -> dict:
                 "model_input_confidence": min(args.thresholds),
                 "status": "error",
             }
+            model = None
             try:
+                # Drop the previous model BEFORE allocating the next one,
+                # important on 8 GB consumer GPUs.
+                _release_gpu_cache()
                 start = perf_counter()
                 model = detector_factory(
                     weights=weights, confidence=min(args.thresholds),
@@ -179,6 +195,9 @@ def run_comparison(args, *, detector_factory=YOLOWorldDetector) -> dict:
                 # Preserve failed variants too. A missing model dependency or
                 # interrupted download must not appear as a zero-detection run.
                 entry["error"] = f"{type(exc).__name__}: {exc}"
+            finally:
+                model = None
+                _release_gpu_cache()
             report["variants"].append(entry)
     return report
 
