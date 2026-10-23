@@ -8,7 +8,59 @@ An **RGB-first, human-in-the-loop** research testbed for reading room numbers an
 
 Can an agent use **observed** room labels, directional signs and lightweight corridor annotations to search more efficiently than checking doors one by one?
 
-A person carries a phone/USB RGB camera and follows high-level observation suggestions. The intended workflow is camera → OCR → physical door association → landmark memory → rule/text-LLM suggestion → human observation. **This full workflow has not yet been integrated or field-validated.** A mobile robot, depth, LiDAR, SLAM and Nav2 are outside the current scope.
+A person carries a phone/USB RGB camera and follows high-level observation suggestions. The intended workflow is camera → OCR → physical door association → landmark memory → rule/text-LLM suggestion → human observation. **This full workflow has not yet been integrated or field-validated.** Robot hardware, depth, LiDAR, SLAM and Nav2 are outside this **current handheld implementation**, but robot motion integration is planned in later stages.
+
+## Updated direction (2026-10-23) — RGB-driven, landmark-guided closed-loop room search
+
+**Planning update, not a claim of implementation.** The research target is an unfamiliar indoor floor, a requested room identifier (e.g., FB545), and a **single RGB camera as the search/perception input**. The system should autonomously identify candidate doors and signage, guide an observer toward a selected door, read its plate, update an evidence-aware landmark memory, and choose where to look next. The search policy must not rely on pre-annotated room locations, RGB-D, depth input, or SLAM pose/map information.
+
+**Two execution stages:** (1) a person holds the RGB camera and follows bounded visual movement/observation prompts, handling collision avoidance and safety; (2) the same high-level RGB perception/reasoning stack is adapted to a robot, with LiDAR SLAM, odometry, Nav2, and obstacle avoidance **only as motion-execution infrastructure**. Human compliance and robot integration are **not yet demonstrated**; actuator substitution is a design objective requiring its own validation. Camera-relative image guidance is **not** a metric map pose or proof of a collision-free route.
+
+### Target architecture (future, not current code)
+
+~~~text
+RGB video (phone now; robot camera later)
+  -> visible door/sign candidates + door tracking + image-quality checks
+  -> RapidOCR room IDs and directional-sign evidence
+  -> door/sign association + distinct-frame evidence -> LandmarkMemory
+  -> high-level search: Rule / text Qwen / optional event-triggered VLM
+     (inspect a visible door, observe a sign/branch, reobserve, verify, abstain)
+  -> visual guidance skill: SEARCH -> SELECT -> ALIGN -> APPROACH -> READ -> UPDATE
+  -> execution and safety adapter: human (now) / robot motion stack (later)
+  -> fresh RGB + action feedback -> repeat until independently verified goal
+~~~
+
+**Design separation:** the detector proposes visible doors (including unread doors); the OCR supplies *raw text evidence*; memory tracks distinct physical entities and conflicts; the planner selects a visible/observed target or requests more viewing; the local guidance skill issues short, revisable, camera-relative actions. A generic VLM is **not** assumed to replace the detector, tracker, OCR, or local safety controller. Plain pretrained COCO YOLO weights do not provide a standard door class; evaluate an open-vocabulary detector or door-trained weights and fine-tune only if needed. Initial VLM use is for keyframes/events (e.g., a new door, junction, ambiguous sign), not for every camera frame.
+
+**Interface change required:** existing M2.4 Observation events are limited to nonempty room/sign text and do not accept bounding boxes or unlabelled-door tracks. Add a separate visual-candidate/track event stream containing frame provenance, normalized box, short-lived track ID and optional associated physical landmark ID; emit the existing strict Observation event **only after actual OCR evidence and justified association**. Do not convert a track ID into a permanent landmark ID without evidence. Retain independent operator confirmation for current FOUND semantics; a future automated goal claim requires an independently evaluated protocol.
+
+### Revised milestones and acceptance criteria
+
+| Stage | Planned extension | Acceptance / evidence |
+| --- | --- | --- |
+| **M0** | Retain timed OCR/review; add timestamped continuous RGB sessions, end-to-end latency and action/execution logging | Replayable sequence of captured frames, displayed prompts and human responses; no future-frame leakage |
+| **M1** | Complete original room-ID extraction and trustworthy observation IDs; then door/sign detection, short-term tracking, OCR-to-physical-door association | At least 3 distinct real doors incl. a miss/misread; unread doors can still be candidates; explicit uncertain associations |
+| **M2** | Preserve existing Rule, text Qwen, memory, tests and results; add visible-target selection, constrained VLM option, structured decisions and fallback | Each decision references actual observed evidence/candidate IDs; unsupported goals/directions rejected; old regression suites preserved |
+| **M3** | Integrate M0/M1/M2 with a bounded human visual-guidance state machine, stale-frame rejection, lost-target recovery and manual safety override | Person follows system-generated prompts to select, align with, approach and read multiple doors without choosing semantic targets independently |
+| **M4** | Controlled field experiments plus separate perception/strategy evaluations: sequential, Rule, text LLM, VLM text-only, VLM image+text | Report verified target-finding success, wrong claims, door visits, duplicates, time, interventions, tracking/association errors and latency; distance/SPL only if measured |
+| **M5 (later)** | Robust unknown corridors, junctions, signs, numbering anomalies, revisits and failure recovery | Held-out floor/corridor trials without advance semantic-map labels or operator-selected search directions |
+| **M6–M7 (later)** | Robot execution adapter, single-door then multi-door/branch closed loop; integrate LiDAR SLAM + Nav2 for safe motion | RGB still selects/reads semantic targets; robot executes safely; evaluate domain shift and intervention rate separately |
+
+**Order of implementation:** finish the original **M1 -> M2.4 real-observation replay** first; demonstrate a single door **detect -> track -> visually align -> approach in short safe steps -> read -> update**; then connect multi-door planning and run VLM comparisons. M0 and M2 histories are preserved rather than renamed as finished visual-navigation work.
+
+### Closest prior work and limits of direct reuse
+
+- [Follow the Signs: Using Textual Cues and LLMs to Guide Efficient Robot Navigation (2026, arXiv)](https://arxiv.org/abs/2601.06652): **very close goal** (sign/room-number patterns, semantic exploration, target rooms). Grid-world study plus a Spot demonstration, **but Spot used pre-annotated occupancy/semantic grids** rather than live RGB sign/room detection. Useful high-level reasoning baseline, not an RGB end-to-end implementation.
+- [Mobile Robot Navigation in Indoor Environments Using Object and Character Recognition (ICRA 2000)](https://doi.org/10.1109/ROBOT.2000.844076): direct earlier example of a robot navigating to a **specified room number** by visually recognizing doors/characters; the core task itself is not new.
+- [Indoor Mobile Robot Navigation Using Doorplate Landmarks (2006)](https://doi.org/10.1504/IJVAS.2006.012204) and [Room Searching Robot Based on Door Detection and Room Number Recognition (2021)](https://doi.org/10.1007/978-981-33-6926-9_4): traditional camera/doorplate-based navigation and room search; not modern pretrained RGB/VLM reasoning across unfamiliar layouts.
+- [Visual Semantic Navigation Based on Deep Learning for Indoor Mobile Robots (2018)](https://doi.org/10.1155/2018/1627185): robot experiments with only RGB sensor input and correction while moving, but models are trained to recognize specific rooms/corridors in the experimental setting, not unknown room-number search.
+- [Efficient Exploration for Room Finding Using Wall-Following Based Path Planning (2009)](https://doi.org/10.5302/J.ICROS.2009.15.12.1232): highlights why paths that stay far from walls can miss small room numbers, and why revisiting missed doors matters; uses conventional exploration/SLAM.
+- [ReasonNav (CoRL 2025)](https://reasonnav.github.io/): closest modern landmark/room/sign reasoning inspiration, but its full robot uses spatial landmarks, mapping and navigation.
+- [NaVid (RSS 2024)](https://arxiv.org/abs/2402.15852), [NaVILA (RSS 2025)](https://arxiv.org/abs/2412.04453), [Uni-NaVid (RSS 2025)](https://arxiv.org/abs/2412.06224): RGB video navigation, action interfaces and temporal history, with navigation-specific training/compute requirements; **not** direct solutions to unknown room-number search.
+- [SignScene (2026, arXiv)](https://arxiv.org/abs/2602.12686): interpreting directional signs and grounding them in possible paths, with spatial representation beyond raw RGB.
+- [Automatic Sign Reading and Localization for Semantic Mapping with an Office Robot (2022)](https://arxiv.org/abs/2209.11432): useful detection/OCR reference, but explicitly RGB-D plus SLAM semantic mapping rather than RGB-first search.
+
+**Literature boundary:** prior art clearly covers numbered-room navigation, signs and RGB-only control. The surveyed work does not supply a single verified ready-to-reproduce solution matching **all** of: live RGB door/sign discovery, unknown-building room-number reasoning, closed-loop door approach, no pre-annotated semantic map for search, and a replaceable human/robot execution adapter. This is a scoped literature finding, **not a claim of novelty**; eventual research contribution depends on measurable improvements against fair baselines.
 
 ## Development snapshot — 2026-10-21
 
@@ -26,7 +78,7 @@ A person carries a phone/USB RGB camera and follows high-level observation sugge
 - **Offline evaluation (historical Prompt v2):** on 20 manually authored *single-step* cases, the original Rule achieved **19/20** legal and acceptable actions; Qwen achieved **10/20** acceptable, **20/20** legal, **0** fallbacks and **17/20** abstentions. The fixed M2.4 Rule reaches **20/20** on the **same already-seen** suite; this is a bug-fix regression, **not** an independent generalization result. The 5 Prompt v3 development requests also do not establish better field navigation.
 - **M3/M4 — pending:** no real multi-door human-in-the-loop search or controlled comparisons of search success, inspected doors, time or distance. M2.4 is not yet connected to live M1 perception. A VLM is not required for the present text-OCR + Rule/text-LLM baseline and has not been deployed.
 
-## Architecture — planned end-to-end loop
+## Original text-only baseline loop (historical; superseded by the updated target architecture above)
 
 ~~~text
 Phone/Camo or webcam → MacBook browser → SSH → remote RapidOCR
@@ -76,7 +128,7 @@ python -m unittest discover -s tests -q
 
 The streaming CLI defaults to **Rule-only** and makes no automatic Ollama requests. Human confirmation must be a separate operator event. Still-image OCR is available as a diagnostic tool through `scripts/ocr_image.py` and `apps/photo_demo.py`.
 
-## Milestones and owners
+## Original baseline milestones and owners (development status, not revised scope)
 
 | Stage | Work | Status |
 | --- | --- | --- |
