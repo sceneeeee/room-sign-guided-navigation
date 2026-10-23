@@ -44,6 +44,19 @@ class CLIComparisonTests(unittest.TestCase):
         self.assertIn("door", [x["category"] for x in report["variants"][0]["predictions"]["frame.png"]])
         self.assertEqual(FakeDetector.calls[0]["confidence"], .1)
 
+    def test_overlay_pngs_written_only_on_explicit_request(self):
+        args = _args(["--images", "frame.png", "--image-root", str(self.root),
+                      "--profiles", "baseline", "--save-overlays",
+                      "--output", str(self.output)])
+        report = run_comparison(args, detector_factory=FakeDetector)
+        overlays = report["variants"][0]["overlay_images"]
+        self.assertIn("frame.png", overlays)
+        overlay = Path(overlays["frame.png"])
+        self.assertTrue(overlay.is_file())
+        self.assertTrue(overlay.resolve().is_relative_to(self.root.resolve()))
+        self.assertEqual(Image.open(overlay).size, (24, 16))
+
+
     def test_labelled_frame_scores_canonical_door(self):
         manifest = self.root / "truth.jsonl"
         manifest.write_text(json.dumps({
