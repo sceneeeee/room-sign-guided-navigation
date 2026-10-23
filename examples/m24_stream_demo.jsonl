@@ -1,0 +1,8 @@
+{"type":"observation","kind":"room","text":"FB541","segment_id":"corridor_FB5","frame_id":"f001","landmark_id":"run01:FB5:door01","observation_id":"run01:f001:roi0","side":"left","timestamp_s":1.0,"confidence":0.92}
+{"type":"observation","kind":"room","text":"FB541","segment_id":"corridor_FB5","frame_id":"f002","landmark_id":"run01:FB5:door01","observation_id":"run01:f002:roi0","side":"left","timestamp_s":2.0}
+{"type":"observation","kind":"room","text":"FB543","segment_id":"corridor_FB5","frame_id":"f003","landmark_id":"run01:FB5:door02","observation_id":"run01:f003:roi0","side":"left","timestamp_s":3.0}
+{"type":"observation","kind":"room","text":"FB543","segment_id":"corridor_FB5","frame_id":"f004","landmark_id":"run01:FB5:door02","observation_id":"run01:f004:roi0","side":"left","timestamp_s":4.0}
+{"type":"observation","kind":"room","text":"FB545","segment_id":"corridor_FB5","frame_id":"f005","landmark_id":"run01:FB5:door03","observation_id":"run01:f005:roi0","side":"left","timestamp_s":5.0}
+{"type":"observation","kind":"room","text":"FB545","segment_id":"corridor_FB5","frame_id":"f005","landmark_id":"run01:FB5:door03","observation_id":"run01:f005:roi1","side":"left","timestamp_s":5.0}
+{"type":"observation","kind":"room","text":"FB545","segment_id":"corridor_FB5","frame_id":"f006","landmark_id":"run01:FB5:door03","observation_id":"run01:f006:roi0","side":"left","timestamp_s":6.0}
+{"type":"operator_confirmation","landmark_id":"run01:FB5:door03","text":"FB545","confirmed_by":"human-demo"}

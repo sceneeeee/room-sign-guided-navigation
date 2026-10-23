@@ -1,0 +1,30 @@
+name: RoomNav offline unit tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [feat/online-rgb-guidance-integration]
+  workflow_dispatch:
+
+jobs:
+  unittest:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install offline test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[ui]'
+          python -m pip install numpy pillow
+      - name: Compile modules
+        run: python -m compileall -q src tests
+      - name: Run all offline unittest cases (M0 + M2 + RGB guidance)
+        run: python -m unittest discover -s tests -v

@@ -16,6 +16,8 @@ A person carries a phone/USB RGB camera and follows high-level observation sugge
 
 **Two execution stages:** (1) a person holds the RGB camera and follows bounded visual movement/observation prompts, handling collision avoidance and safety; (2) the same high-level RGB perception/reasoning stack is adapted to a robot, with LiDAR SLAM, odometry, Nav2, and obstacle avoidance **only as motion-execution infrastructure**. Human compliance and robot integration are **not yet demonstrated**; actuator substitution is a design objective requiring its own validation. Camera-relative image guidance is **not** a metric map pose or proof of a collision-free route.
 
+**M1 development update (draft PR #4, not merged to main):** M0/M2.4 integration, RGB candidate detection/short-lived tracking, a strict M1 OCR-event adapter and bounded M3 visual prompts now have offline-tested code. On three correlated images of one door, the existing YOLO-World configuration missed the door throughout and misclassified a power switch/outlet as a sign. An [offline RGB detector comparison guide](docs/m1-detector-benchmark.zh-CN.md) now covers YOLO-World versus YOLOE text prompts, confidence sweeps and review overlays; **these new configurations have not yet been measured on real footage**. This is not an end-to-end room-finding result.
+
 ### Target architecture (future, not current code)
 
 ~~~text

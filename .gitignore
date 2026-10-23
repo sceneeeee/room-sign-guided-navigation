@@ -32,3 +32,6 @@ dist/
 
 # Scratch
 /temp_report.md
+
+# M2.3b local evaluation (may include OCR evidence)
+/results*.jsonl

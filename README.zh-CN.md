@@ -16,6 +16,8 @@
 - **未来阶段——机器人执行：** 尽量复用同一套 RGB 感知、LandmarkMemory 和高层策略；机器人通过里程计、LiDAR SLAM、Nav2 与避障控制完成运动。**SLAM 提供定位/几何地图，Nav2 负责规划和控制，不替 RGB 策略判定房号或选择搜索目标。** 但将“观察门 D07”的视觉目标转换为可执行、安全的机器人动作，仍需专门设计执行适配层，并以实机实验验证。
 - **重要边界：** 目前目标为图像中的相对方向与短步动作，不是从单帧 RGB 精确测出门的米制坐标、门前全局 Approach Pose，或在未知障碍环境中保证可通行。人体安全能力不能算作算法自动避障能力。
 
+**M1 线上进展（PR #4，尚未合并 main）：** M0/M2.4 集成、门/标牌候选检测与短期跟踪、M1 OCR 事件适配、M3 视觉短动作提示均有离线可测试实现。已有 YOLO-World 在同一扇门的 3 张相关图像中未检出门，唯一 sign 候选为开关/插座误检，因此新增[RGB 检测模型与提示词离线对照工具](docs/m1-detector-benchmark.zh-CN.md)；支持 YOLO-World / YOLOE、阈值扫描和候选框可视化。**YOLOE 的这组新参数尚无真实推理结果，完整寻房仍未实现或验证。**
+
 ### 目标系统架构（计划，不是当前代码）
 
 ~~~text
@@ -63,6 +65,10 @@ RGB 连续观测（现在手机，未来机器人摄像头）
 - [Automatic Sign Reading and Localization for Semantic Mapping with an Office Robot（2022）](https://arxiv.org/abs/2209.11432)：可参考门牌检测/OCR，技术路线使用 RGB-D 和 SLAM 赋予地图语义，**不是本项目当前的搜索主线**。
 
 **文献边界：** 房号导航、视觉门检测和单目纠偏都有明确先例。此次检索尚未确认存在一个可直接复现、同时满足**实时 RGB 发现门牌、未知房号推理、闭环靠近、无需预标注语义地图、可切换人/机器人执行端**的完整系统；这不等于保证该方向具有论文创新性。最终贡献应由公平基线、真实数据和可复现结果证明。
+
+### 线上原型最新进度（开发分支，非现场验证）
+
+截至 2026-10-23，草稿 [PR #4](https://github.com/sceneeeee/room-sign-guided-navigation/pull/4) 的 `feat/online-rgb-guidance-integration` 分支已整合 M0/M2.4、增加可测试的 M1 OCR→M2 适配、保守图像轨迹关联和视觉方向提示，并新增 **独立 RGB 候选检测/引导演示入口** `apps/rgb_guidance_demo.py`（详见 [运行说明](docs/rgb-guidance-demo.md)）。这些均为待实机核验的开发能力；**没有宣称门检测准确率、现场闭环成功率，也没有替换原有 M0 页面**。线下标注与测试依赖 [Issue #2](https://github.com/sceneeeee/room-sign-guided-navigation/issues/2)。
 
 ## 开发进度快照（2026-10-21）
 
