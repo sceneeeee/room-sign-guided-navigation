@@ -139,7 +139,7 @@ with gr.Blocks(title="RoomNav RGB Visual Guidance — experimental") as demo:
         "只负责候选门框和相机相对方向；**人负责避障与安全**。"
         "仅将帧发送到当前服务端，不自动录像，不声称准确门牌识别或完整导航。"
     )
-    session = gr.State(value=GuidanceSession)
+    session = gr.State(value=lambda: GuidanceSession())
     with gr.Row():
         with gr.Column():
             incoming = gr.Image(sources=["webcam"], type="numpy", streaming=True, label="手机/Camo 摄像头")
