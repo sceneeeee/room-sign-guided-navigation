@@ -106,6 +106,8 @@ def select_target(track_id, state):
         return "请先等待图像中的候选门出现并选择"
     if track_id not in {c.track_id for c in state.candidates}:
         return "该候选目标已经过期，请重新观察"
+    if state.controller.target_track_id == track_id:
+        return f"当前已在观察 {track_id}，无需重复选择"
     try:
         state.controller.select_target(track_id)
     except ValueError as e:
@@ -157,7 +159,9 @@ with gr.Blocks(title="RoomNav RGB Visual Guidance — experimental") as demo:
         outputs=[marked, candidates, action, session, diagnostics],
         stream_every=1.0, concurrency_limit=1, show_progress="minimal",
     )
-    candidates.change(select_target, inputs=[candidates, session], outputs=[select_status], queue=False)
+    # .input only fires on user interaction; .change would reselect on every
+    # stream-driven Dropdown update and reset the controller frame gate.
+    candidates.input(select_target, inputs=[candidates, session], outputs=[select_status], queue=False)
     done.click(lambda state: confirm_action(state, True), inputs=[session], outputs=[feedback, session], queue=False)
     unsafe.click(lambda state: confirm_action(state, False), inputs=[session], outputs=[feedback, session], queue=False)
     stop.click(halt, inputs=[session], outputs=[feedback, session], queue=False)
