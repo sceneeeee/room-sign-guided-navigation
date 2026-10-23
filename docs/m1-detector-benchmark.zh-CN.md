@@ -30,8 +30,11 @@ git pull --ff-only
   --profiles baseline office doorway \
   --thresholds 0.10 0.20 0.30 0.50 \
   --device cuda:0 \
+  --save-overlays \
   --output outputs/door-smoke-20261023.json
 ~~~
+
+`--save-overlays` 会额外把 **带 RGB 候选框、类别及分数的 PNG 预览** 保存在 `outputs/overlays/`，便于人工检查模型到底框住了整扇门还是开关/插座。它不会把图片上传到 GitHub，且所有预览都只是候选、不是正确检测的证明。
 
 这将逐一加载 2 个模型 × 3 套提示词：每次模型与提示词组合独立运行，**不会在 GPU 同时保留全部模型**。第一次运行可能需要下载 YOLOE 权重和文本编码器，存在 CLIP、TLS、VRAM、模型 API 等实际兼容性风险；个别组合失败会在结果中记录 \`status=error\`，不能当作该组合没有检测到门。先用这 3 张小图判断候选框是否看起来符合实体门/门牌，再使用更多独立房间做有标注评估。
 
