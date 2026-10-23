@@ -64,6 +64,10 @@ RGB 连续观测（现在手机，未来机器人摄像头）
 
 **文献边界：** 房号导航、视觉门检测和单目纠偏都有明确先例。此次检索尚未确认存在一个可直接复现、同时满足**实时 RGB 发现门牌、未知房号推理、闭环靠近、无需预标注语义地图、可切换人/机器人执行端**的完整系统；这不等于保证该方向具有论文创新性。最终贡献应由公平基线、真实数据和可复现结果证明。
 
+### 线上原型最新进度（开发分支，非现场验证）
+
+截至 2026-10-23，草稿 [PR #4](https://github.com/sceneeeee/room-sign-guided-navigation/pull/4) 的 `feat/online-rgb-guidance-integration` 分支已整合 M0/M2.4、增加可测试的 M1 OCR→M2 适配、保守图像轨迹关联和视觉方向提示，并新增 **独立 RGB 候选检测/引导演示入口** `apps/rgb_guidance_demo.py`（详见 [运行说明](docs/rgb-guidance-demo.md)）。这些均为待实机核验的开发能力；**没有宣称门检测准确率、现场闭环成功率，也没有替换原有 M0 页面**。线下标注与测试依赖 [Issue #2](https://github.com/sceneeeee/room-sign-guided-navigation/issues/2)。
+
 ## 开发进度快照（2026-10-21）
 
 **请区分项目进度与 `main` 实际可运行的代码：**
