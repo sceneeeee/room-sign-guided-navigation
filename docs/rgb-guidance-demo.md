@@ -50,18 +50,32 @@ must stay bound to loopback; avoid exposing the UI to public networks.
   \`directional sign\` as *candidate proposals*. Weights
   \`yolov8s-world.pt\` load/download on first detection. Validate
   Ultralytics runtime version/model support and dataset performance locally.
+  The detection extra explicitly installs the upstream CLIP package needed by
+  `set_classes()`; its ViT-B/32 weights also need an initial download. Preload
+  both models before camera testing. Model-load failures stop guidance.
+- Webcam mirroring is explicitly disabled: Gradio 6.30.0 mirrors the frames
+  sent to the backend by default, which would reverse physical left/right.
 - Input Gradio video is **sampled approximately once per second**; this is
   NOT a guaranteed real-time 30-FPS pipeline. The current UI timestamps frame
   **receipt at the server**, not camera-side capture. End-to-end transport,
   queuing and human interface latencies are not yet measured.
+  Server processing time is included in the frame-age check. Identical
+  consecutive RGB payloads are conservatively rejected; different pixels
+  still do **not** prove a recent camera capture. Frames already processed
+  while waiting for feedback, or in flight when operator input changes,
+  cannot authorize a subsequent movement.
 - Uses IoU-based **continuous, short-term** image tracks. IDs can change on
   abrupt viewpoint changes. They are never promoted to permanent physical
   \`landmark_id\` automatically; no learned re-ID, camera pose or SLAM.
+  Ambiguous splits/merges receive fresh IDs, as do gaps longer than 3 seconds.
+  Detector scores are retained; scores below 0.30 cannot authorize movement.
 - On screen, pick an actually visible track; the controller subsequently
   proposes short relative turns or a conservative \`FORWARD_SHORT\` only if
   the target is in view and aligned. **Human controls all motion and
   independently assesses safety**. A stopped/unsafe response blocks future
   motions.
+  Lost/stale targets cancel pending actions. Stop/reject immediately replaces
+  the displayed movement advice; explicit reselection is required to resume.
 - In this version \`readable=False\` until a real quality estimator and
   OCR-to-door crop association is integrated. Therefore the UI cannot yet
   complete \`STOP_AND_READ\` or \`FOUND\` automatically. It neither reads nor

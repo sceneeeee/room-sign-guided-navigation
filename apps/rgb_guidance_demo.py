@@ -9,6 +9,7 @@ robot control. Human operator is solely responsible for safety.
 """
 from dataclasses import dataclass, field
 from functools import lru_cache
+from hashlib import sha256
 from time import monotonic
 from uuid import uuid4
 
@@ -16,7 +17,7 @@ import gradio as gr
 
 from roomnav.rgb_perception import YOLOWorldDetector
 from roomnav.visual_tracking import ConservativeTracker
-from roomnav.visual_guidance import VisualCandidate, VisualGuidanceController
+from roomnav.visual_guidance import GuidanceDecision, VisualCandidate, VisualGuidanceController
 
 
 @dataclass
@@ -28,6 +29,9 @@ class GuidanceSession:
     candidates: list[VisualCandidate] = field(default_factory=list)
     last_frame_id: str | None = None
     last_motion_id: int | None = None
+    last_frame_digest: bytes | None = None
+    last_received_s: float | None = None
+    interaction_version: int = 0
 
 
 @lru_cache(maxsize=1)
@@ -73,43 +77,70 @@ def process_frame(frame, state, *, predict=None, now=None):
         state = GuidanceSession()
     if frame is None:
         return None, gr.update(), "等待 RGB 视频帧", state, "尚无视频"
-    now = monotonic() if now is None else now
-    if predict is None:
-        predict = detector()
+    started_s = monotonic()
+    interaction_version = state.interaction_version
+    now = started_s if now is None else now
+    state.last_received_s = started_s
     state.frames_seen += 1
     fid = f"{state.run_id}-f{state.frames_seen:07d}"
     try:
+        # Without camera timestamps, identical consecutive payloads cannot
+        # establish a fresh capture. This is conservative duplicate rejection,
+        # not proof that other frames were captured recently.
+        digest = sha256(str((frame.shape, str(frame.dtype))).encode() + frame.tobytes()).digest()
+        if digest == state.last_frame_digest:
+            state.controller.halt()
+            state.candidates = []
+            state.last_motion_id = None
+            return (None, gr.update(choices=[], value=None), ACTION_ZH["STOP_REOBSERVE"], state,
+                    "Action: STOP_REOBSERVE | Identical RGB payload; fresh camera capture is unverified")
+        state.last_frame_digest = digest
+        if predict is None:
+            predict = detector()
         detected = predict.detect(frame)
         tracks = state.tracker.update(fid, now, detected)
         state.candidates = tracks
         state.last_frame_id = fid
-        decision = state.controller.step(fid, now, tracks, now_s=now)
-        state.last_motion_id = decision.action_id or state.last_motion_id
         overlay = annotate_frame(frame, tracks, state.controller.target_track_id)
+        elapsed_s = monotonic() - started_s
+        if interaction_version != state.interaction_version:
+            decision = GuidanceDecision(
+                "STOP_REOBSERVE", "Operator input changed during processing; wait for a later received frame",
+                state.controller.target_track_id, fid,
+            )
+        else:
+            decision = state.controller.step(fid, now, tracks, now_s=now + elapsed_s)
+        state.last_motion_id = state.controller.pending_action_id
         choices = [(f"{x.track_id} ({x.category})", x.track_id) for x in tracks]
-        selection = state.controller.target_track_id
+        selection = None if state.controller.halted else state.controller.target_track_id
         if selection is not None and selection not in {x.track_id for x in tracks}:
             selection = None
         message = ACTION_ZH.get(decision.action, decision.action)
         details = (f"Action: {decision.action} | frame: {fid} | candidates: {len(tracks)}\n"
                    f"Reason: {decision.reason}\n"
                    f"Server frame receipt: {now:.3f}; no camera-side timestamp or measured network latency\n"
+                   f"Server processing: {elapsed_s:.3f}s (excludes network/queue/display)\n"
                    f"Action ID: {decision.action_id if decision.action_id is not None else '-'}")
         return overlay, gr.update(choices=choices, value=selection), message, state, details
     except Exception as e:
         state.controller.halt()
+        state.candidates = []
+        state.last_motion_id = None
         return None, gr.update(choices=[], value=None), "暂停：检测或处理失败", state, f"{type(e).__name__}: {e}"
 
 
 def select_target(track_id, state):
     if state is None or not track_id:
         return "请先等待图像中的候选门出现并选择"
-    if track_id not in {c.track_id for c in state.candidates}:
+    if (track_id not in {c.track_id for c in state.candidates}
+            or state.last_received_s is None
+            or monotonic() - state.last_received_s > state.controller.max_frame_age_s):
         return "该候选目标已经过期，请重新观察"
-    if state.controller.target_track_id == track_id:
+    if state.controller.target_track_id == track_id and not state.controller.halted:
         return f"当前已在观察 {track_id}，无需重复选择"
     try:
         state.controller.select_target(track_id)
+        state.interaction_version += 1
     except ValueError as e:
         return f"切换目标被拒绝：{e}"
     return f"已选中 {track_id}，等待下一帧后计算观察方向"
@@ -120,6 +151,7 @@ def confirm_action(state, safe):
         return "当前没有待确认的移动动作", state
     action_id = state.controller.pending_action_id
     state.controller.acknowledge(action_id, completed=safe, safe=safe)
+    state.interaction_version += 1
     state.last_motion_id = None
     if safe:
         return f"已记录动作 {action_id} 完成；等待新画面", state
@@ -130,6 +162,8 @@ def halt(state):
     if state is None:
         state = GuidanceSession()
     state.controller.halt()
+    state.interaction_version += 1
+    state.last_motion_id = None
     return "已请求停止；当前不允许继续给出运动指令", state
 
 
@@ -142,7 +176,10 @@ with gr.Blocks(title="RoomNav RGB Visual Guidance — experimental") as demo:
     session = gr.State(value=lambda: GuidanceSession())
     with gr.Row():
         with gr.Column():
-            incoming = gr.Image(sources=["webcam"], type="numpy", streaming=True, label="手机/Camo 摄像头")
+            incoming = gr.Image(
+                sources=["webcam"], type="numpy", streaming=True,
+                webcam_options=gr.WebcamOptions(mirror=False), label="手机/Camo 摄像头",
+            )
             candidates = gr.Dropdown(label="选择需要查看的可见门/标牌", choices=[], interactive=True)
             select_status = gr.Textbox(label="选中目标状态", interactive=False)
         with gr.Column():
@@ -162,9 +199,14 @@ with gr.Blocks(title="RoomNav RGB Visual Guidance — experimental") as demo:
     # .input only fires on user interaction; .change would reselect on every
     # stream-driven Dropdown update and reset the controller frame gate.
     candidates.input(select_target, inputs=[candidates, session], outputs=[select_status], queue=False)
-    done.click(lambda state: confirm_action(state, True), inputs=[session], outputs=[feedback, session], queue=False)
-    unsafe.click(lambda state: confirm_action(state, False), inputs=[session], outputs=[feedback, session], queue=False)
-    stop.click(halt, inputs=[session], outputs=[feedback, session], queue=False)
+    done.click(lambda state: (*confirm_action(state, True), ACTION_ZH["WAIT_EXECUTION"]),
+               inputs=[session], outputs=[feedback, session, action], queue=False)
+    unsafe.click(lambda state: (*confirm_action(state, False), ACTION_ZH["STOP_REOBSERVE"]),
+                 inputs=[session], outputs=[feedback, session, action], queue=False)
+    stop.click(lambda state: (*halt(state), ACTION_ZH["STOP_REOBSERVE"]),
+               inputs=[session], outputs=[feedback, session, action], queue=False)
+    incoming.clear(lambda state: (*halt(state), ACTION_ZH["STOP_REOBSERVE"]),
+                   inputs=[session], outputs=[feedback, session, action], queue=False)
 
 
 if __name__ == "__main__":

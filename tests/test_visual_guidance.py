@@ -30,10 +30,49 @@ class VisualGuidanceTests(unittest.TestCase):
     def test_short_forward_requires_ack_and_new_frame(self):
         first = self.step("f1", 1.0, [door("f1", 1.0, .4, .6)])
         self.assertEqual(first.action, "FORWARD_SHORT")
-        self.assertEqual(self.step("f1", 1.0, [door("f1", 1.0, .4, .6)]).action, "WAIT_EXECUTION")
+        self.assertEqual(self.step("f2", 2.0, [door("f2", 2.0, .4, .6)]).action, "WAIT_EXECUTION")
         self.ctl.acknowledge(first.action_id, completed=True, safe=True)
-        self.assertEqual(self.step("f1", 1.0, [door("f1", 1.0, .4, .6)]).action, "STOP_REOBSERVE")
-        self.assertEqual(self.step("f2", 2.0, [door("f2", 2.0, .4, .6)]).action, "FORWARD_SHORT")
+        self.assertEqual(self.step("f2", 2.0, [door("f2", 2.0, .4, .6)]).action, "STOP_REOBSERVE")
+        self.assertEqual(self.step("f3", 3.0, [door("f3", 3.0, .4, .6)]).action, "FORWARD_SHORT")
+
+    def test_target_switch_cannot_reuse_consumed_frame(self):
+        first = self.step("f1", 1.0, [door("f1", 1.0, .4, .6)])
+        self.ctl.acknowledge(first.action_id, completed=True, safe=True)
+        self.ctl.select_target("d2")
+        reused = self.step("f1", 1.0, [door("f1", 1.0, .4, .6, track="d2")])
+        self.assertEqual(reused.action, "STOP_REOBSERVE")
+        self.assertIsNone(reused.action_id)
+
+    def test_old_frame_id_cannot_be_retimestamped_after_another_frame(self):
+        for fid, ts in (("f1", 1.0), ("f2", 2.0)):
+            result = self.step(fid, ts, [door(fid, ts, .4, .6, True)])
+            self.assertEqual(result.action, "STOP_AND_READ")
+        result = self.step("f1", 3.0, [door("f1", 3.0, .4, .6)])
+        self.assertEqual(result.action, "STOP_REOBSERVE")
+
+    def test_stale_lost_or_duplicate_frame_cancels_pending_motion(self):
+        for mode in ("stale", "lost", "duplicate", "future"):
+            with self.subTest(mode=mode):
+                ctl = VisualGuidanceController()
+                ctl.select_target("d1")
+                first = ctl.step("f1", 1.0, [door("f1", 1.0, .4, .6)], now_s=1.1)
+                fid, ts, now = ("f1", 1.0, 1.1) if mode == "duplicate" else ("f2", 2.0, 2.1)
+                if mode == "stale":
+                    now = 20.0
+                if mode == "future":
+                    now = 1.9
+                candidates = [] if mode == "lost" else [door(fid, ts, .4, .6)]
+                self.assertEqual(ctl.step(fid, ts, candidates, now_s=now).action, "STOP_REOBSERVE")
+                self.assertTrue(ctl.halted)
+                self.assertIsNone(ctl.pending_action_id)
+                with self.assertRaises(ValueError):
+                    ctl.acknowledge(first.action_id, completed=True, safe=True)
+
+    def test_low_confidence_track_cannot_authorize_motion(self):
+        candidate = VisualCandidate("f1", 1.0, "d1", "door", (.4, .1, .6, .9), score=.1)
+        decision = self.step("f1", 1.0, [candidate])
+        self.assertEqual(decision.action, "STOP_REOBSERVE")
+        self.assertIsNone(decision.action_id)
 
     def test_right_target_and_loss(self):
         turn = self.step("f1", 1.0, [door("f1", 1.0, .72, .95)])

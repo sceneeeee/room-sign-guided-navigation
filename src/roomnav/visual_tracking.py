@@ -20,20 +20,25 @@ class _Track:
 
 class ConservativeTracker:
     def __init__(self, *, min_iou: float = 0.35, max_missed_frames: int = 0,
-                 ambiguity_margin: float = 0.08):
+                 ambiguity_margin: float = 0.08, max_frame_gap_s: float = 3.0):
         if not 0 < min_iou < 1:
             raise ValueError("min_iou must lie in (0,1)")
         if type(max_missed_frames) is not int or not 0 <= max_missed_frames <= 3:
             raise ValueError("max_missed_frames must be in [0,3]")
         if not 0 <= ambiguity_margin < 0.5:
             raise ValueError("ambiguity_margin must lie in [0,0.5)")
+        if (type(max_frame_gap_s) not in (int, float)
+                or not isfinite(max_frame_gap_s) or max_frame_gap_s <= 0):
+            raise ValueError("max_frame_gap_s must be finite and positive")
         self.min_iou = float(min_iou)
         self.max_missed_frames = max_missed_frames
         self.ambiguity_margin = float(ambiguity_margin)
+        self.max_frame_gap_s = float(max_frame_gap_s)
         self._tracks: dict[str, _Track] = {}
         self._next_track = 1
         self._last_frame: str | None = None
         self._last_timestamp: float = -1
+        self._seen_frame_ids: set[str] = set()
 
     def update(self, frame_id: str, timestamp_s: float,
                detections: list[Detection]) -> list[VisualCandidate]:
@@ -41,15 +46,19 @@ class ConservativeTracker:
             raise ValueError("frame_id must be nonblank")
         if (type(timestamp_s) not in (float, int) or not isfinite(timestamp_s)
                 or timestamp_s < 0 or timestamp_s <= self._last_timestamp
-                or frame_id == self._last_frame):
+                or frame_id in self._seen_frame_ids):
             raise ValueError("Tracker requires strictly increasing, new frames")
         if not isinstance(detections, list) or any(not isinstance(d, Detection) for d in detections):
             raise ValueError("Expected a list of Detection")
+        if self._last_timestamp >= 0 and timestamp_s - self._last_timestamp > self.max_frame_gap_s:
+            self._tracks.clear()
         self._last_frame = frame_id
         self._last_timestamp = float(timestamp_s)
+        self._seen_frame_ids.add(frame_id)
 
         pairs = []
         per_detection = {}
+        per_track = {}
         for i, d in enumerate(detections):
             scored = []
             for tid, previous in self._tracks.items():
@@ -62,12 +71,19 @@ class ConservativeTracker:
             per_detection[i] = scored
             for overlap, tid in scored:
                 pairs.append((overlap, tid, i))
+                per_track.setdefault(tid, []).append(overlap)
+
+        ambiguous_tracks = set()
+        for tid, overlaps in per_track.items():
+            overlaps.sort(reverse=True)
+            if len(overlaps) > 1 and overlaps[0] - overlaps[1] < self.ambiguity_margin:
+                ambiguous_tracks.add(tid)
 
         pairs.sort(key=lambda x: (-x[0], x[1], x[2]))
         assigned: dict[int, str] = {}
         taken: set[str] = set()
         for overlap, tid, i in pairs:
-            if i in assigned or tid in taken:
+            if i in assigned or tid in taken or tid in ambiguous_tracks:
                 continue
             nearby = per_detection[i]
             # Refuse a historical identity if two tracks overlap this
@@ -94,6 +110,6 @@ class ConservativeTracker:
                 frame_id=frame_id, timestamp_s=float(timestamp_s),
                 track_id=tid, category=detection.category,
                 bbox_xyxy_norm=detection.bbox_xyxy_norm,
-                readable=False, landmark_id=None,
+                readable=False, landmark_id=None, score=detection.score,
             ))
         return visible

@@ -23,6 +23,7 @@ class VisualCandidate:
     bbox_xyxy_norm: tuple[float, float, float, float]
     readable: bool = False
     landmark_id: str | None = None
+    score: float | None = None
 
     def __post_init__(self) -> None:
         for name in ("frame_id", "track_id"):
@@ -44,6 +45,11 @@ class VisualCandidate:
             raise ValueError("bbox_xyxy_norm must have positive area")
         if self.category not in ("door", "sign") or type(self.readable) is not bool:
             raise ValueError("Unsupported category or readable flag")
+        if self.score is not None and (
+            type(self.score) not in (int, float) or not isfinite(self.score)
+            or not 0 <= self.score <= 1
+        ):
+            raise ValueError("score must be finite and within [0,1]")
 
     @property
     def center_x(self) -> float:
@@ -83,6 +89,7 @@ class VisualGuidanceController:
         self.target_track_id: str | None = None
         self.last_frame_id: str | None = None
         self.last_timestamp_s: float = -1
+        self._seen_frame_ids: set[str] = set()
         self.pending_action_id: int | None = None
         self._next_id: int = 1
         self.halted: bool = False
@@ -93,8 +100,6 @@ class VisualGuidanceController:
         if self.pending_action_id is not None:
             raise ValueError("Cannot switch target while motion awaits feedback")
         self.target_track_id = track_id
-        self.last_frame_id = None
-        self.last_timestamp_s = -1
         self.halted = False
 
     def halt(self) -> None:
@@ -139,22 +144,35 @@ class VisualGuidanceController:
         if len(ids) != len(set(ids)):
             raise ValueError("Duplicate track_id within one frame")
 
-        if self.halted:
-            return self._decision("STOP_REOBSERVE", "Operator halted or execution was unsafe", frame_id)
-        if self.pending_action_id is not None:
-            return self._decision("WAIT_EXECUTION", "Await feedback for previous short motion", frame_id)
-        if self.last_frame_id == frame_id or timestamp_s <= self.last_timestamp_s:
+        if frame_id in self._seen_frame_ids or timestamp_s <= self.last_timestamp_s:
+            if self.pending_action_id is not None:
+                self.halt()
             return self._decision("STOP_REOBSERVE", "Duplicate or out-of-order frame", frame_id)
         if now_s < timestamp_s or now_s - timestamp_s > self.max_frame_age_s:
+            if self.pending_action_id is not None:
+                self.halt()
             return self._decision("STOP_REOBSERVE", "Stale or future-dated image", frame_id)
 
+        # Advance even while waiting: a pre-feedback frame cannot be replayed
+        # after acknowledgement or target selection to authorize more motion.
         self.last_frame_id = frame_id
         self.last_timestamp_s = timestamp_s
+        self._seen_frame_ids.add(frame_id)
+        if self.halted:
+            return self._decision("STOP_REOBSERVE", "Operator halted or execution was unsafe", frame_id)
         if self.target_track_id is None:
             return self._decision("SEARCH", "High-level planner has not selected a visible track", frame_id)
         target = next((c for c in candidates if c.track_id == self.target_track_id), None)
         if target is None:
+            if self.pending_action_id is not None:
+                self.halt()
             return self._decision("STOP_REOBSERVE", "Selected door/sign track is lost", frame_id)
+        if target.score is not None and target.score < 0.3:
+            if self.pending_action_id is not None:
+                self.halt()
+            return self._decision("STOP_REOBSERVE", "Selected track has low detector confidence", frame_id)
+        if self.pending_action_id is not None:
+            return self._decision("WAIT_EXECUTION", "Await feedback for previous short motion", frame_id)
 
         if target.center_x < 0.5 - self.center_tolerance:
             return self._decision("TURN_LEFT", "Target is left of the image center", frame_id, motion=True)

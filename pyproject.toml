@@ -15,7 +15,11 @@ dependencies = []
 [project.optional-dependencies]
 vision = ["rapidocr>=3.0", "onnxruntime>=1.17", "pillow>=10"]
 ui = ["gradio==6.30.0"]
-detection = ["ultralytics>=8.3", "numpy>=1.24"]
+detection = [
+    "ultralytics>=8.3", "numpy>=1.24",
+    # YOLO-World set_classes() needs CLIP; Ultralytics leaves it optional.
+    "clip @ https://codeload.github.com/ultralytics/CLIP/zip/7ffa84b3bfa40c42ecc1c77147a855e69cb2dd40",
+]
 development = ["pytest>=8.0"]
 
 [project.scripts]

@@ -71,6 +71,15 @@ class RGBDetectionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             detector.detect(np.zeros((16, 16, 3), np.float32))
 
+    def test_non_square_image_uses_original_width_and_height(self):
+        model = FakeYOLO(SimpleNamespace(
+            xyxy=FakeTensor([[20, 10, 160, 90]]),
+            conf=FakeTensor([.9]), cls=FakeTensor([1.0]),
+        ))
+        found = YOLOWorldDetector(model=model).detect(np.zeros((100, 200, 3), np.uint8))
+        self.assertEqual(found[0].bbox_xyxy_norm, (.1, .1, .8, .9))
+        self.assertEqual(found[0].category, "sign")
+
 
 class TrackerTests(unittest.TestCase):
     def test_same_visible_door_gets_same_short_track(self):
@@ -79,6 +88,24 @@ class TrackerTests(unittest.TestCase):
         second = tracker.update("f2", 2, [d((.12, .1, .42, .9))])
         self.assertEqual(first[0].track_id, second[0].track_id)
         self.assertIsNone(second[0].landmark_id)
+        self.assertEqual(second[0].score, .8)
+
+    def test_ambiguous_split_never_preserves_arbitrary_old_track(self):
+        for boxes in (
+            [(.18, .1, .58, .9), (.22, .1, .62, .9)],
+            [(.22, .1, .62, .9), (.18, .1, .58, .9)],
+        ):
+            with self.subTest(boxes=boxes):
+                tracker = ConservativeTracker()
+                old = tracker.update("f1", 1, [d((.2, .1, .6, .9))])[0].track_id
+                new = tracker.update("f2", 2, [d(box) for box in boxes])
+                self.assertNotIn(old, [candidate.track_id for candidate in new])
+
+    def test_long_frame_gap_does_not_preserve_identity(self):
+        tracker = ConservativeTracker(max_frame_gap_s=3)
+        first = tracker.update("f1", 1, [d((.1, .1, .4, .9))])
+        later = tracker.update("f2", 10, [d((.1, .1, .4, .9))])
+        self.assertNotEqual(first[0].track_id, later[0].track_id)
 
     def test_tracks_do_not_merge_by_same_ocr_or_class(self):
         tracker = ConservativeTracker()
@@ -111,6 +138,9 @@ class TrackerTests(unittest.TestCase):
             tracker.update("f1", 2, [])
         with self.assertRaises(ValueError):
             tracker.update("f2", 1, [])
+        tracker.update("f2", 2, [])
+        with self.assertRaises(ValueError):
+            tracker.update("f1", 3, [])
 
     def test_category_change_does_not_reuse_track(self):
         tracker = ConservativeTracker()
