@@ -19,7 +19,10 @@ when `parse_room_number` recognizes the *complete* raw room identifier.
 - Current M2 `FOUND` remains **operator-confirmation only**. Even repeated
   matching observations enter `VERIFY_TARGET`, not FOUND.
 
-Offline unit tests instantiate `StreamSession` and exercise repeated-frame
-gating, duplicate replay, incomplete OCR, distinct physical doors and
-association failure. All test data are **synthetic**. Connect to Issue #2
-once real annotated door frames are available.
+`roomnav.m1_pipeline.M1Session` provides the M1-side replay boundary: it
+keeps rejected OCR records for review, accepts complete room identifiers,
+and deduplicates only the explicit `session_id:frame_id:region_id` capture
+identity. It does not merge equal strings from different physical doors.
+The current tests are **synthetic** and validate the contract only; they do
+not count as a real-corridor M1 result. Connect to the annotated field frames
+once Issue #2 data are available.
