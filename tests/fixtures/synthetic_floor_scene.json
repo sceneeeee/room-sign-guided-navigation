@@ -1,0 +1,11 @@
+{
+  "description": "Synthetic lookup-only fixture. No real floor geometry or target locations.",
+  "source": {"rectified_raster": "floor_1f_base_modified.tif"},
+  "rooms": [
+    {"id": "room_SYN101", "label": "SYN101", "status": "candidate", "target_status": "eligible"},
+    {"id": "room_SYN102", "label": "SYN102", "status": "candidate", "target_status": "excluded"}
+  ],
+  "portals": [{"id": "synthetic_portal", "space_a": "room_SYN101", "status": "candidate"}],
+  "candidate_routes": [{"id": "synthetic_route", "goal": "room_SYN101", "status": "candidate"}],
+  "observation_contract": {"route_execution": "disabled: synthetic candidates only"}
+}

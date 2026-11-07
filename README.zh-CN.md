@@ -68,6 +68,8 @@ RGB 连续观测（现在手机，未来机器人摄像头）
 
 ### 线上原型最新进度（开发分支，非现场验证）
 
+**2026-11-07 · M1 → M2.4 现场事件离线集成：** 三条人工关联观测 `LSS101 → LSS124 → LSS119` 已通过 `M1Session` / `StreamSession` 及现有 JSONL CLI 回放，不查询预标注地图。目标 LSS119 的动作依次为 `INSUFFICIENT_EVIDENCE → INSUFFICIENT_EVIDENCE → REOBSERVE`，人工确认数为 0，无 FOUND；时间戳全部保留原始 `0.0` 占位。场景单测使用隔离合成夹具，真实地图缺失依赖待组员修复。[回放命令、证据与限制](docs/m1-m2-offline-adapter.md)。这不是实时闭环寻房成功验证。
+
 截至 2026-10-23，草稿 [PR #4](https://github.com/sceneeeee/room-sign-guided-navigation/pull/4) 的 `feat/online-rgb-guidance-integration` 分支已整合 M0/M2.4、增加可测试的 M1 OCR→M2 适配、保守图像轨迹关联和视觉方向提示，并新增 **独立 RGB 候选检测/引导演示入口** `apps/rgb_guidance_demo.py`（详见 [运行说明](docs/rgb-guidance-demo.md)）。这些均为待实机核验的开发能力；**没有宣称门检测准确率、现场闭环成功率，也没有替换原有 M0 页面**。线下标注与测试依赖 [Issue #2](https://github.com/sceneeeee/room-sign-guided-navigation/issues/2)。
 
 ## 开发进度快照（2026-10-21）
@@ -81,7 +83,7 @@ RGB 连续观测（现在手机，未来机器人摄像头）
 **实际完成情况与限制：**
 
 - **M0 · 有限现场验证：** 2026-10-18，使用**手机 → Camo → MacBook 浏览器 → SSH → Linux RapidOCR**，在约 **2 m、正面、镜头高 1.0 m** 的单一条件下，对实物门牌 `LSS101` 完成 **1 次定点 Record、共 6 张采样帧**。测试者确认六帧均对应实物 `LSS101`；逐帧完整编号识别为 **5/6（83.3%）**，1 帧无文字。远端 OCR 耗时 **0.54–1.09 秒/帧**，不含端到端传输与显示。这只覆盖一扇门、一个条件，不能外推为其他门牌或现场条件的准确率。 **这六帧来自一次 Record，不是六次独立试验；旧记录为有损 JPG，后续代码改为 PNG。**
-- **M1 · 待开发：** 从原始 OCR 提取完整房号、区分不同物理门牌、跨帧关联和去重，为每条观测提供可信的 `frame_id`、`observation_id`、`landmark_id`。首版可以人工标注关联，**不能仅凭 OCR 字符串相同就认定是同一扇门**。
+- **M1 · 部分实现（离线契约）：** `RoomOCRSample`/`M1Session` 已能从原始 OCR 筛选完整房号、保留拒绝样本、按 `session_id:frame_id:region_id` 去重，并仅在人工/连续跟踪明确提供物理门 ID 时输出 `landmark_id`。**尚未完成真实走廊的门/门牌检测、跨帧跟踪和至少 3 扇实体门验收；不能把离线合成测试写成 M1 现场完成。**
 - **M2 · 开发分支已独立实现：** M2.1 `LandmarkMemory`；M2.2 编号规则基线；M2.3a 受约束文本 LLM Planner 与安全回退；M2.3b 本地 Ollama/Qwen3-4B；M2.3c 冻结 20 场景评估；M2.3d 可选 Prompt v2/v3（**v2 默认，v3 策略效果仍不稳定**）；M2.4 JSONL/标准输入流式观测、增量规则决策与同帧重复计数修复。**本地 WSL 全量 194 项单元测试通过**。模拟 `FB541 → FB543 → FB545` 回放可依次返回 `REOBSERVE` / `VERIFY_TARGET` / 人工确认后 `FOUND`，但这**不是现场寻房成功案例**。
 - **历史离线对照（Prompt v2）：** 20 个**人工设计、冻结的单步场景**中，旧 Rule **19/20** 动作合法且可接受；Qwen **10/20** 可接受、**20/20** 合法、**0** 次 fallback、**17/20** 弃权。M2.4 修复已知同帧 Bug 后，Rule 在**同一套已暴露**场景上回归为 **20/20**；这是修复回归，**不是独立泛化验证**。Prompt v3 只有 5 次开发检查，不能据此推断真实策略更优。
 - **M3/M4 · 尚未开展真实闭环与正式对照：** M2.4 尚未收到实时 M1 观测；没有多门牌实地寻房的成功率、查看门数、行走时间/距离指标。当前使用文本 OCR + Rule / 文本 Qwen，未部署 VLM，现阶段也不必以 VLM 为前置条件。

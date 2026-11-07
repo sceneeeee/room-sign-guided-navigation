@@ -87,7 +87,7 @@
 
 这里的 `candidate_text` 只是 OCR 票数最多的候选文本，不等于已经确认的真实房间编号。票数相同时返回 `null`；`consistent` 也仅指多次识别输出一致，不是人工核实。左右侧的定义必须使用一致的走廊参考方向；返回时观察方向反转应标注 `unknown` 或统一坐标规则。
 
-**M2.2/M2.4 已实现：** 规则基线只依赖显式关联地标的候选或人工确认结果形成编号趋势；遇到 OCR 冲突时要求复查。M2.4 已有 JSONL/标准输入流式入口，真实 M1 视频事件适配仍待接入。
+**M2.2/M2.4 已实现：** 规则基线只依赖显式关联地标的候选或人工确认结果形成编号趋势；遇到 OCR 冲突时要求复查。M2.4 已有 JSONL/标准输入流式入口；2026-11-07 三门现场事件已完成离线回放，实时 M1 视频接入仍待完成。回放限制和命令见 [M1 → M2.4 适配文档](m1-m2-offline-adapter.md)。
 
 参考：[M2.1 设计与预训练模型复用](m2-memory.zh-CN.md)。
 
@@ -104,3 +104,36 @@
 `Decision.to_dict()` 包含 `action`、`reason`、`facts`、`assumptions`、`uncertainties` 和 `evidence_landmark_ids`；命令行额外输出目标及样本数量。`facts` 指真实发生的观测/人工确认事件，不能把未知目标位置写成既定事实。
 
 [完整规则、局限和示例命令](m2-rule-reasoning.zh-CN.md)。
+
+## 1F 静态场景候选路线（独立工具）
+
+
+M1 可以通过 `roomnav.floor_scene.FloorScene` 查询透视校正后的 1F 场景：
+
+```python
+from roomnav.floor_scene import FloorScene
+scene = FloorScene()
+ctx = scene.observation_context("LSS119")
+```
+
+返回值包含房间节点、候选门、候选路线和校正底图路径，只用于独立地图工具的离线核对，不参与当前 RGB 高层搜索的目标选择或观察顺序建议；门连接未验证前，执行策略必须拒绝直接导航。
+
+地图来源固定为：
+
+```text
+data/maps/1f/floor_1f_base_modified.tif
+```
+
+不要把 `IMG_3167.HEIC` 或未校正的 `floor_1f_base.png` 用作路线几何来源。
+
+M1 场景桥接示例：
+
+```python
+from roomnav.m1_scene_bridge import M1SceneBridge
+bridge = M1SceneBridge()
+enriched = bridge.enrich(m1_observation)
+```
+
+`enriched["scene_match"]` 只添加静态场景候选，不修改 `text`、`frame_id` 或 `landmark_id`，也不会把候选门标记为已验证。
+
+此静态地图工具与核心 RGB 寻房路径隔离；M1 → M2.4 回放不调用 FloorScene / M1SceneBridge，不读取预标注目标位置。scene_match 不是严格 Observation 字段，不能直接提交 StreamSession。真实地图 JSON/栅格位于被忽略的 data/maps/ 下，由数据负责人后续提供；单元测试只使用 tests/fixtures/ 的合成场景。

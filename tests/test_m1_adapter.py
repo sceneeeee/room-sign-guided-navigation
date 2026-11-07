@@ -15,6 +15,14 @@ def sample(label, frame, *, door="d1", region="r0", association="manual", sessio
 
 
 class M1AdapterTests(unittest.TestCase):
+    def test_complete_reading_becomes_strict_event(self):
+        event = sample("FB545", "f1").to_m2_event()
+        self.assertEqual(event["type"], "observation")
+        self.assertEqual(event["text"], "FB545")
+        self.assertEqual(event["frame_id"], "s1:f1")
+        self.assertEqual(event["observation_id"], "s1:f1:r0")
+        self.assertEqual(event["landmark_id"], "s1:d1")
+
     def test_real_stream_evidence_never_auto_finds(self):
         stream = StreamSession("FB545")
         one = sample("FB545", "f1").to_m2_event()
@@ -36,6 +44,7 @@ class M1AdapterTests(unittest.TestCase):
         stream = StreamSession("FB545")
         raw = sample("FB545", "f1", door=None, association="none").to_m2_event()
         self.assertIsNone(raw["landmark_id"])
+        self.assertEqual(raw["observation_id"], "s1:f1:r0")
         answer = stream.process_event(raw)
         self.assertEqual(answer["memory"]["landmark_count"], 0)
         self.assertEqual(answer["memory"]["unassociated_observation_count"], 1)
@@ -47,8 +56,12 @@ class M1AdapterTests(unittest.TestCase):
         self.assertEqual(raw["text"], "FB-545")
 
     def test_same_ocr_on_distinct_physical_doors_stays_separate(self):
+        first = sample("FB545", "f1", door="door1").to_m2_event()
+        second = sample("FB545", "f2", door="door2").to_m2_event()
+        self.assertNotEqual(first["landmark_id"], second["landmark_id"])
+        self.assertNotEqual(first["observation_id"], second["observation_id"])
         stream = StreamSession("FB545")
-        stream.process_event(sample("FB545", "f1", door="door1").to_m2_event())
+        stream.process_event(first)
         result = stream.process_event(sample("FB545", "f2", door="door2").to_m2_event())
         self.assertEqual(result["memory"]["landmark_count"], 2)
         self.assertEqual(result["decision"]["action"], "REOBSERVE")
