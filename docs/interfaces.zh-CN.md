@@ -39,3 +39,32 @@
 控制输出属于**人的行动建议**，不是 ROS 2 `NavigateToPose` 指令。
 
 动作集合：`FOUND`、`CONTINUE_ALONG_SEGMENT`、`CHECK_MISSING_OR_OTHER_SIDE`、`INSUFFICIENT_EVIDENCE`。
+## 1F 静态场景候选路线（M1 接入）
+
+M1 可以通过 `roomnav.floor_scene.FloorScene` 查询透视校正后的 1F 场景：
+
+```python
+from roomnav.floor_scene import FloorScene
+scene = FloorScene()
+ctx = scene.observation_context("LSS119")
+```
+
+返回值包含房间节点、候选门、候选路线和校正底图路径。候选路线只用于观察顺序和策略实验；门连接未验证前，执行策略必须拒绝直接导航。
+
+地图来源固定为：
+
+```text
+data/maps/1f/floor_1f_base_modified.tif
+```
+
+不要把 `IMG_3167.HEIC` 或未校正的 `floor_1f_base.png` 用作路线几何来源。
+
+M1 场景桥接示例：
+
+```python
+from roomnav.m1_scene_bridge import M1SceneBridge
+bridge = M1SceneBridge()
+enriched = bridge.enrich(m1_observation)
+```
+
+`enriched["scene_match"]` 只添加静态场景候选，不修改 `text`、`frame_id` 或 `landmark_id`，也不会把候选门标记为已验证。
