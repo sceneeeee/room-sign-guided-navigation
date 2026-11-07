@@ -26,7 +26,7 @@ class M1Session:
         self.session_id = session_id
         self.accepted: list[dict] = []
         self.rejected: list[dict] = []
-        self._seen_ids: set[str] = set()
+        self._seen_observations: dict[str, dict] = {}
 
     def ingest(self, sample: RoomOCRSample) -> M1IngestResult:
         if sample.session_id != self.session_id:
@@ -39,10 +39,13 @@ class M1Session:
             return M1IngestResult("rejected", reason=record["reason"])
 
         observation_id = observation["observation_id"]
-        if observation_id in self._seen_ids:
+        previous = self._seen_observations.get(observation_id)
+        if previous is not None:
+            if previous != observation:
+                raise ValueError("observation_id reused with different content")
             return M1IngestResult("duplicate", observation=observation,
                                   reason="observation_id_already_seen")
-        self._seen_ids.add(observation_id)
+        self._seen_observations[observation_id] = dict(observation)
         self.accepted.append(observation)
         return M1IngestResult("accepted", observation=observation)
 

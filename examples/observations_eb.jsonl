@@ -1,2 +1,4 @@
-{"kind":"room","text":"EB102","segment_id":"corridor_A","side":"left","timestamp_s":0.0,"confidence":0.91,"frame_id":"frame_00001"}
-{"kind":"room","text":"EB103","segment_id":"corridor_A","side":"right","timestamp_s":4.2,"confidence":0.94,"frame_id":"frame_00002"}
+{"kind":"room","text":"EB102","segment_id":"corridor_A","side":"left","timestamp_s":0.0,"confidence":0.91,"frame_id":"frame_00001","landmark_id":"corridor_A:door02","observation_id":"demo:f001"}
+{"kind":"room","text":"EB102","segment_id":"corridor_A","side":"left","timestamp_s":1.0,"confidence":0.93,"frame_id":"frame_00002","landmark_id":"corridor_A:door02","observation_id":"demo:f002"}
+{"kind":"room","text":"EB103","segment_id":"corridor_A","side":"right","timestamp_s":4.2,"confidence":0.94,"frame_id":"frame_00003","landmark_id":"corridor_A:door03","observation_id":"demo:f003"}
+{"kind":"room","text":"EB103","segment_id":"corridor_A","side":"right","timestamp_s":5.2,"confidence":0.95,"frame_id":"frame_00004","landmark_id":"corridor_A:door03","observation_id":"demo:f004"}

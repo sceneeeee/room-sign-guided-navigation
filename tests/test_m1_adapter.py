@@ -2,6 +2,7 @@
 import unittest
 
 from roomnav.m1_adapter import RoomOCRSample
+from roomnav.stream import StreamSession
 
 
 def sample(label, frame, *, door="d1", region="r0", association="manual", session="s1"):
@@ -22,10 +23,31 @@ class M1AdapterTests(unittest.TestCase):
         self.assertEqual(event["observation_id"], "s1:f1:r0")
         self.assertEqual(event["landmark_id"], "s1:d1")
 
+    def test_real_stream_evidence_never_auto_finds(self):
+        stream = StreamSession("FB545")
+        one = sample("FB545", "f1").to_m2_event()
+        first = stream.process_event(one)
+        self.assertEqual(first["decision"]["action"], "REOBSERVE")
+        two = stream.process_event(sample("FB545", "f2").to_m2_event())
+        self.assertEqual(two["decision"]["action"], "VERIFY_TARGET")
+        self.assertEqual(two["memory"]["landmark_count"], 1)
+        self.assertEqual(two["memory"]["confirmation_count"], 0)
+
+    def test_duplicate_roi_same_frame_does_not_pass_distinct_frame_gate(self):
+        stream = StreamSession("FB545")
+        stream.process_event(sample("FB545", "f1").to_m2_event())
+        other = stream.process_event(sample("FB545", "f1", region="r1").to_m2_event())
+        self.assertEqual(other["decision"]["action"], "REOBSERVE")
+        self.assertEqual(other["memory"]["raw_observation_count"], 2)
+
     def test_unassociated_ocr_does_not_mint_landmark(self):
+        stream = StreamSession("FB545")
         raw = sample("FB545", "f1", door=None, association="none").to_m2_event()
         self.assertIsNone(raw["landmark_id"])
         self.assertEqual(raw["observation_id"], "s1:f1:r0")
+        answer = stream.process_event(raw)
+        self.assertEqual(answer["memory"]["landmark_count"], 0)
+        self.assertEqual(answer["memory"]["unassociated_observation_count"], 1)
 
     def test_incomplete_ocr_yields_no_event(self):
         for text in ("", "FB54?", "this is a door", "FB541  FB543", "FB", "545 ->"):
@@ -38,6 +60,19 @@ class M1AdapterTests(unittest.TestCase):
         second = sample("FB545", "f2", door="door2").to_m2_event()
         self.assertNotEqual(first["landmark_id"], second["landmark_id"])
         self.assertNotEqual(first["observation_id"], second["observation_id"])
+        stream = StreamSession("FB545")
+        stream.process_event(first)
+        result = stream.process_event(sample("FB545", "f2", door="door2").to_m2_event())
+        self.assertEqual(result["memory"]["landmark_count"], 2)
+        self.assertEqual(result["decision"]["action"], "REOBSERVE")
+
+    def test_same_frame_resubmission_is_idempotent(self):
+        stream = StreamSession("FB545")
+        event = sample("FB545", "f1").to_m2_event()
+        stream.process_event(event)
+        repeated = stream.process_event(event)
+        self.assertEqual(repeated["status"], "duplicate")
+        self.assertEqual(repeated["memory"]["raw_observation_count"], 1)
 
     def test_invalid_identity_or_association_rejected(self):
         for kwargs in (

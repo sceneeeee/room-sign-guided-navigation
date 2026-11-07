@@ -1,0 +1,570 @@
+{
+  "suite_version": "m2.3d-prompt-development-v1",
+  "scenarios": [
+    {
+      "scenario_id": "dev_local_descent",
+      "tags": [
+        "development"
+      ],
+      "evidence": {
+        "target": "ZK855",
+        "active_segment": "EAST",
+        "observations": [
+          {
+            "kind": "room",
+            "text": "ZK864",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p0",
+            "side": "unknown",
+            "frame_id": "EAST:p0:f0",
+            "observation_id": "EAST:p0:o0"
+          },
+          {
+            "kind": "room",
+            "text": "ZK864",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p0",
+            "side": "unknown",
+            "frame_id": "EAST:p0:f1",
+            "observation_id": "EAST:p0:o1"
+          },
+          {
+            "kind": "room",
+            "text": "ZK861",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p1",
+            "side": "unknown",
+            "frame_id": "EAST:p1:f0",
+            "observation_id": "EAST:p1:o0"
+          },
+          {
+            "kind": "room",
+            "text": "ZK861",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p1",
+            "side": "unknown",
+            "frame_id": "EAST:p1:f1",
+            "observation_id": "EAST:p1:o1"
+          },
+          {
+            "kind": "room",
+            "text": "ZK858",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p2",
+            "side": "unknown",
+            "frame_id": "EAST:p2:f0",
+            "observation_id": "EAST:p2:o0"
+          },
+          {
+            "kind": "room",
+            "text": "ZK858",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p2",
+            "side": "unknown",
+            "frame_id": "EAST:p2:f1",
+            "observation_id": "EAST:p2:o1"
+          }
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": [
+          "CONTINUE_ALONG_SEGMENT"
+        ],
+        "rationale": "Three distinct labels decrease in annotated traversal order. Continuing is a testable local hypothesis, not a target location.",
+        "ground_truth": "Development-only decision-time snapshot; no hidden target location is asserted."
+      }
+    },
+    {
+      "scenario_id": "dev_suspect_conflict",
+      "tags": [
+        "development"
+      ],
+      "evidence": {
+        "target": "VX476",
+        "active_segment": "EAST",
+        "observations": [
+          {
+            "kind": "room",
+            "text": "VX470",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p0",
+            "side": "unknown",
+            "frame_id": "EAST:p0:f0",
+            "observation_id": "EAST:p0:o0"
+          },
+          {
+            "kind": "room",
+            "text": "VX470",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p0",
+            "side": "unknown",
+            "frame_id": "EAST:p0:f1",
+            "observation_id": "EAST:p0:o1"
+          },
+          {
+            "kind": "room",
+            "text": "VX476",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:unclear",
+            "frame_id": "unclear:f0",
+            "observation_id": "unclear:o0"
+          },
+          {
+            "kind": "room",
+            "text": "VX478",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:unclear",
+            "frame_id": "unclear:f1",
+            "observation_id": "unclear:o1"
+          },
+          {
+            "kind": "room",
+            "text": "VX476",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:unclear",
+            "frame_id": "unclear:f2",
+            "observation_id": "unclear:o2"
+          }
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": [
+          "REOBSERVE"
+        ],
+        "rationale": "Resolve the target-like conflicting readings at the already observed landmark; no confirmation is authorized.",
+        "ground_truth": "Development-only decision-time snapshot; no hidden target location is asserted."
+      }
+    },
+    {
+      "scenario_id": "dev_unlinked_corridors",
+      "tags": [
+        "development"
+      ],
+      "evidence": {
+        "target": "HC647",
+        "active_segment": "WEST",
+        "observations": [
+          {
+            "kind": "room",
+            "text": "HC641",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p0",
+            "side": "unknown",
+            "frame_id": "EAST:p0:f0",
+            "observation_id": "EAST:p0:o0"
+          },
+          {
+            "kind": "room",
+            "text": "HC641",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p0",
+            "side": "unknown",
+            "frame_id": "EAST:p0:f1",
+            "observation_id": "EAST:p0:o1"
+          },
+          {
+            "kind": "room",
+            "text": "HC644",
+            "segment_id": "WEST",
+            "landmark_id": "WEST:p0",
+            "side": "unknown",
+            "frame_id": "WEST:p0:f0",
+            "observation_id": "WEST:p0:o0"
+          },
+          {
+            "kind": "room",
+            "text": "HC644",
+            "segment_id": "WEST",
+            "landmark_id": "WEST:p0",
+            "side": "unknown",
+            "frame_id": "WEST:p0:f1",
+            "observation_id": "WEST:p0:o1"
+          }
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": [
+          "INSUFFICIENT_EVIDENCE"
+        ],
+        "rationale": "Each unrelated corridor has one distinct non-target door; they do not form a local trend.",
+        "ground_truth": "Development-only decision-time snapshot; no hidden target location is asserted."
+      }
+    },
+    {
+      "scenario_id": "dev_even_side",
+      "tags": [
+        "development"
+      ],
+      "evidence": {
+        "target": "RP251",
+        "active_segment": "EAST",
+        "observations": [
+          {
+            "kind": "room",
+            "text": "RP240",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p0",
+            "side": "right",
+            "frame_id": "EAST:p0:f0",
+            "observation_id": "EAST:p0:o0"
+          },
+          {
+            "kind": "room",
+            "text": "RP240",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p0",
+            "side": "right",
+            "frame_id": "EAST:p0:f1",
+            "observation_id": "EAST:p0:o1"
+          },
+          {
+            "kind": "room",
+            "text": "RP244",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p1",
+            "side": "right",
+            "frame_id": "EAST:p1:f0",
+            "observation_id": "EAST:p1:o0"
+          },
+          {
+            "kind": "room",
+            "text": "RP244",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p1",
+            "side": "right",
+            "frame_id": "EAST:p1:f1",
+            "observation_id": "EAST:p1:o1"
+          },
+          {
+            "kind": "room",
+            "text": "RP248",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p2",
+            "side": "right",
+            "frame_id": "EAST:p2:f0",
+            "observation_id": "EAST:p2:o0"
+          },
+          {
+            "kind": "room",
+            "text": "RP248",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p2",
+            "side": "right",
+            "frame_id": "EAST:p2:f1",
+            "observation_id": "EAST:p2:o1"
+          }
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": [
+          "CHECK_MISSING_OR_OTHER_SIDE"
+        ],
+        "rationale": "A tentative even-side pattern makes observing the opposite side useful; no side is established as target truth.",
+        "ground_truth": "Development-only decision-time snapshot; no hidden target location is asserted."
+      }
+    },
+    {
+      "scenario_id": "dev_internal_gap",
+      "tags": [
+        "development"
+      ],
+      "evidence": {
+        "target": "PF126",
+        "active_segment": "EAST",
+        "observations": [
+          {
+            "kind": "room",
+            "text": "PF118",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p0",
+            "side": "unknown",
+            "frame_id": "EAST:p0:f0",
+            "observation_id": "EAST:p0:o0"
+          },
+          {
+            "kind": "room",
+            "text": "PF118",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p0",
+            "side": "unknown",
+            "frame_id": "EAST:p0:f1",
+            "observation_id": "EAST:p0:o1"
+          },
+          {
+            "kind": "room",
+            "text": "PF122",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p1",
+            "side": "unknown",
+            "frame_id": "EAST:p1:f0",
+            "observation_id": "EAST:p1:o0"
+          },
+          {
+            "kind": "room",
+            "text": "PF122",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p1",
+            "side": "unknown",
+            "frame_id": "EAST:p1:f1",
+            "observation_id": "EAST:p1:o1"
+          },
+          {
+            "kind": "room",
+            "text": "PF130",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p2",
+            "side": "unknown",
+            "frame_id": "EAST:p2:f0",
+            "observation_id": "EAST:p2:o0"
+          },
+          {
+            "kind": "room",
+            "text": "PF130",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p2",
+            "side": "unknown",
+            "frame_id": "EAST:p2:f1",
+            "observation_id": "EAST:p2:o1"
+          }
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": [
+          "CHECK_MISSING_OR_OTHER_SIDE"
+        ],
+        "rationale": "The apparent internal gap is worth inspecting, without assuming the missing label exists.",
+        "ground_truth": "Development-only decision-time snapshot; no hidden target location is asserted."
+      }
+    },
+    {
+      "scenario_id": "dev_range_sign",
+      "tags": [
+        "development"
+      ],
+      "evidence": {
+        "target": "TB667",
+        "active_segment": "NORTH",
+        "observations": [
+          {
+            "kind": "sign",
+            "text": "TB640-TB680 straight ahead along NORTH",
+            "segment_id": "NORTH",
+            "landmark_id": "NORTH:p0",
+            "side": "unknown",
+            "frame_id": "NORTH:p0:f0",
+            "observation_id": "NORTH:p0:o0"
+          },
+          {
+            "kind": "sign",
+            "text": "TB640-TB680 straight ahead along NORTH",
+            "segment_id": "NORTH",
+            "landmark_id": "NORTH:p0",
+            "side": "unknown",
+            "frame_id": "NORTH:p0:f1",
+            "observation_id": "NORTH:p0:o1"
+          }
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": [
+          "CONTINUE_ALONG_SEGMENT",
+          "INSUFFICIENT_EVIDENCE"
+        ],
+        "rationale": "The observed sign supports tentative forward inspection; conservative abstention remains acceptable because sign reliability is unknown.",
+        "ground_truth": "Development-only decision-time snapshot; no hidden target location is asserted."
+      }
+    },
+    {
+      "scenario_id": "dev_irregular_order",
+      "tags": [
+        "development"
+      ],
+      "evidence": {
+        "target": "WL917",
+        "active_segment": "EAST",
+        "observations": [
+          {
+            "kind": "room",
+            "text": "WL910",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p0",
+            "side": "unknown",
+            "frame_id": "EAST:p0:f0",
+            "observation_id": "EAST:p0:o0"
+          },
+          {
+            "kind": "room",
+            "text": "WL910",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p0",
+            "side": "unknown",
+            "frame_id": "EAST:p0:f1",
+            "observation_id": "EAST:p0:o1"
+          },
+          {
+            "kind": "room",
+            "text": "WL916",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p1",
+            "side": "unknown",
+            "frame_id": "EAST:p1:f0",
+            "observation_id": "EAST:p1:o0"
+          },
+          {
+            "kind": "room",
+            "text": "WL916",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p1",
+            "side": "unknown",
+            "frame_id": "EAST:p1:f1",
+            "observation_id": "EAST:p1:o1"
+          },
+          {
+            "kind": "room",
+            "text": "WL912",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p2",
+            "side": "unknown",
+            "frame_id": "EAST:p2:f0",
+            "observation_id": "EAST:p2:o0"
+          },
+          {
+            "kind": "room",
+            "text": "WL912",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p2",
+            "side": "unknown",
+            "frame_id": "EAST:p2:f1",
+            "observation_id": "EAST:p2:o1"
+          }
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": [
+          "INSUFFICIENT_EVIDENCE"
+        ],
+        "rationale": "No explained monotonic trend or direction sign supports a preference.",
+        "ground_truth": "Development-only decision-time snapshot; no hidden target location is asserted."
+      }
+    },
+    {
+      "scenario_id": "dev_single_door",
+      "tags": [
+        "development"
+      ],
+      "evidence": {
+        "target": "NX565",
+        "active_segment": "EAST",
+        "observations": [
+          {
+            "kind": "room",
+            "text": "NX561",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p0",
+            "side": "unknown",
+            "frame_id": "EAST:p0:f0",
+            "observation_id": "EAST:p0:o0"
+          },
+          {
+            "kind": "room",
+            "text": "NX561",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p0",
+            "side": "unknown",
+            "frame_id": "EAST:p0:f1",
+            "observation_id": "EAST:p0:o1"
+          }
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": [
+          "INSUFFICIENT_EVIDENCE"
+        ],
+        "rationale": "Multiple frames of one non-target door do not establish a sequence.",
+        "ground_truth": "Development-only decision-time snapshot; no hidden target location is asserted."
+      }
+    },
+    {
+      "scenario_id": "dev_prefix_mismatch",
+      "tags": [
+        "development"
+      ],
+      "evidence": {
+        "target": "JG739",
+        "active_segment": "EAST",
+        "observations": [
+          {
+            "kind": "room",
+            "text": "KF731",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p0",
+            "side": "unknown",
+            "frame_id": "EAST:p0:f0",
+            "observation_id": "EAST:p0:o0"
+          },
+          {
+            "kind": "room",
+            "text": "KF731",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p0",
+            "side": "unknown",
+            "frame_id": "EAST:p0:f1",
+            "observation_id": "EAST:p0:o1"
+          },
+          {
+            "kind": "room",
+            "text": "KF734",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p1",
+            "side": "unknown",
+            "frame_id": "EAST:p1:f0",
+            "observation_id": "EAST:p1:o0"
+          },
+          {
+            "kind": "room",
+            "text": "KF734",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p1",
+            "side": "unknown",
+            "frame_id": "EAST:p1:f1",
+            "observation_id": "EAST:p1:o1"
+          },
+          {
+            "kind": "room",
+            "text": "KF737",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p2",
+            "side": "unknown",
+            "frame_id": "EAST:p2:f0",
+            "observation_id": "EAST:p2:o0"
+          },
+          {
+            "kind": "room",
+            "text": "KF737",
+            "segment_id": "EAST",
+            "landmark_id": "EAST:p2",
+            "side": "unknown",
+            "frame_id": "EAST:p2:f1",
+            "observation_id": "EAST:p2:o1"
+          }
+        ],
+        "confirmations": []
+      },
+      "oracle": {
+        "acceptable_actions": [
+          "INSUFFICIENT_EVIDENCE"
+        ],
+        "rationale": "No observed connection supports applying KF numbering to JG.",
+        "ground_truth": "Development-only decision-time snapshot; no hidden target location is asserted."
+      }
+    }
+  ]
+}
