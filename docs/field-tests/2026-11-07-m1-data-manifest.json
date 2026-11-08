@@ -1,0 +1,41 @@
+{
+  "schema_version": "m1-keyframe-manifest-1",
+  "session_id": "session_01",
+  "source_video_private": "data/field_sessions/1f_raw/session_01/video/route_LSS101_LSS124_LSS119.MOV",
+  "frames_private": "data/field_sessions/1f_raw/session_01/frames_2fps/",
+  "frame_count": 167,
+  "selected_keyframes": 20,
+  "selection_frame_ids": [
+    "frame_000001",
+    "frame_000002",
+    "frame_000005",
+    "frame_000010",
+    "frame_000020",
+    "frame_000029",
+    "frame_000030",
+    "frame_000036",
+    "frame_000042",
+    "frame_000050",
+    "frame_000068",
+    "frame_000084",
+    "frame_000090",
+    "frame_000096",
+    "frame_000110",
+    "frame_000126",
+    "frame_000131",
+    "frame_000145",
+    "frame_000160",
+    "frame_000161"
+  ],
+  "timestamp_rule": "(frame_number - 1) / 2.0 for ffmpeg 2 FPS extraction; verify against source video before metric use",
+  "public_artifact": "docs/field-tests/2026-11-07-m1-keyframes.jsonl",
+  "raw_ocr_private": "data/field_sessions/1f_raw/session_01/review/ocr_raw.jsonl",
+  "status": "partial_manual_review",
+  "counts": {
+    "human_reviewed_partial": 3,
+    "ai_generated_candidates": 16,
+    "unknown_ocr_or_unreviewed": 0,
+    "annotation_complete": 0
+  },
+  "privacy": "Original video and frames are local-only and ignored by git; this manifest contains no image bytes or personal/student information."
+}
