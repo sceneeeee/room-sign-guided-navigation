@@ -1,6 +1,8 @@
 # Room & Sign-Guided Indoor Navigation
 
-[中文说明](README.zh-CN.md) · **Project status (2026-10-21): M0 field-capture workflow merged into `main` via PR #1; M2.1–M2.4 implemented on `feat/m2-reasoning`; M1/M3/M4 pending**
+[中文说明](README.zh-CN.md) · **Project status (2026-11-09): M1 keyframe review and reproducible validation are delivered in part; two frames still lack complete annotation, and live M3/M4 search remains pending**
+
+Current M1 review boundary: 21 human-reviewed instance records across 20 keyframes, with 18 complete frames and 2 incomplete frames, covering 4 physical doors (LSS101, LSS124, LSS118, LSS119). The strict M1 observation replay still contains only 3 observations (LSS101, LSS124, LSS119); LSS118 is present in the review data but has not been added to that replay. Run `python3 scripts/validate_m1_review.py` to validate the review and export a detector-evaluation manifest.
 
 An **RGB-first, human-in-the-loop** research testbed for reading room numbers and signage and deciding where to look next when the target room's location is unknown.
 

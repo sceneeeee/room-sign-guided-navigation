@@ -30,12 +30,22 @@
   "timestamp_rule": "(frame_number - 1) / 2.0 for ffmpeg 2 FPS extraction; verify against source video before metric use",
   "public_artifact": "docs/field-tests/2026-11-07-m1-keyframes.jsonl",
   "raw_ocr_private": "data/field_sessions/1f_raw/session_01/review/ocr_raw.jsonl",
-  "status": "partial_manual_review",
+  "status": "partial_manual_review_with_validated_keyframes",
   "counts": {
     "human_reviewed_partial": 3,
-    "ai_generated_candidates": 16,
+    "ai_generated_candidates": 17,
     "unknown_ocr_or_unreviewed": 0,
-    "annotation_complete": 0
+    "annotation_complete": 18,
+    "annotation_incomplete": 2,
+    "reviewed_instances": 21,
+    "manually_associated_instances": 12,
+    "distinct_physical_doors_reviewed": 4,
+    "distinct_physical_door_ids_reviewed": [
+      "door_LSS101",
+      "door_LSS118",
+      "door_LSS119",
+      "door_LSS124"
+    ]
   },
   "privacy": "Original video and frames are local-only and ignored by git; this manifest contains no image bytes or personal/student information."
 }
