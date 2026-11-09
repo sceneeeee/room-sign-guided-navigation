@@ -1,6 +1,8 @@
 # 基于门牌与指示牌的室内导航（Room & Sign-Guided Indoor Navigation）
 
-[English](README.md) · **项目进度（2026-10-21）：M0 现场采集与复核流程已通过 PR #1 合并至 `main`；M2.1–M2.4 在独立开发分支完成；M1/M3/M4 尚未完成**
+[English](README.md) · **项目进度（2026-11-09）：M1 关键帧人工复核与可复现校验已完成阶段性交付；完整 M1 感知验收仍有 2 帧待补标，M3/M4 现场闭环尚未完成**
+
+当前 M1 复核边界：21 条人工复核实例记录、20 个关键帧，其中 18 帧完整、2 帧不完整，覆盖 4 个实体门（LSS101、LSS124、LSS118、LSS119）。严格 M1 Observation 回放仍只有 3 条（LSS101、LSS124、LSS119）；LSS118 尚未写入该回放。可用 `python3 scripts/validate_m1_review.py` 复核并导出检测评测清单。
 
 ## 研究目标与边界
 
