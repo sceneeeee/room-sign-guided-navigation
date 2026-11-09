@@ -40,6 +40,20 @@ class M1ReviewTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 read_review(path)
 
+    def test_optional_export_provenance_preserves_instance_identity(self):
+        records = read_review(REVIEW)
+        rows = detection_manifest(records, image_root=IMAGE_ROOT, include_provenance=True)
+        by_line = {record.line_number: record for record in records}
+        for row in rows:
+            for annotation in row["annotations"]:
+                source = by_line[annotation["review_line_number"]]
+                self.assertEqual(row["scene_id"], f"{source.data['session_id']}:{source.frame_id}")
+                self.assertIsNotNone(source.data[f"{annotation['category']}_bbox"])
+        defaults = detection_manifest(records, image_root=IMAGE_ROOT)
+        for row in defaults:
+            for annotation in row["annotations"]:
+                self.assertNotIn("review_line_number", annotation)
+
 
 if __name__ == "__main__":
     unittest.main()

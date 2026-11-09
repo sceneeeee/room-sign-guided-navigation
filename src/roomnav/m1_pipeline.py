@@ -27,14 +27,24 @@ class M1Session:
         self.accepted: list[dict] = []
         self.rejected: list[dict] = []
         self._seen_observations: dict[str, dict] = {}
+        self._source_contexts: dict[tuple[str, str], str] = {}
 
-    def ingest(self, sample: RoomOCRSample) -> M1IngestResult:
+    def ingest(self, sample: RoomOCRSample, *, source_context: str = "unverified") -> M1IngestResult:
         if sample.session_id != self.session_id:
             raise ValueError("sample belongs to a different session")
+        if source_context not in ("unverified", "directional_sign", "poster"):
+            raise ValueError("Unknown OCR source context")
+        capture = (sample.frame_id, sample.region_id)
+        previous_context = self._source_contexts.get(capture)
+        if previous_context is not None and previous_context != source_context:
+            raise ValueError("Capture source_context cannot change within a session")
+        self._source_contexts[capture] = source_context
         observation = sample.to_m2_event()
-        if observation is None:
+        if observation is None or source_context != "unverified":
+            reason = ("non_room_sign_context" if source_context != "unverified"
+                      else "incomplete_or_ambiguous_ocr")
             record = {"frame_id": sample.frame_id, "region_id": sample.region_id,
-                      "raw_text": sample.raw_text, "reason": "incomplete_or_ambiguous_ocr"}
+                      "raw_text": sample.raw_text, "reason": reason}
             self.rejected.append(record)
             return M1IngestResult("rejected", reason=record["reason"])
 

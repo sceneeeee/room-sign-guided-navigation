@@ -8,6 +8,9 @@ from dataclasses import asdict, dataclass
 from math import isfinite
 from typing import Literal
 
+MIN_DETECTOR_SCORE = 0.3
+DEFAULT_MAX_FRAME_AGE_S = 2.0
+
 Action = Literal[
     "SEARCH", "TURN_LEFT", "TURN_RIGHT", "FORWARD_SHORT",
     "STOP_AND_READ", "STOP_REOBSERVE", "WAIT_EXECUTION",
@@ -79,7 +82,8 @@ class VisualGuidanceController:
     to M2. 'readable' is a visibility/quality signal, NOT an OCR confirmation.
     """
 
-    def __init__(self, *, center_tolerance: float = 0.12, max_frame_age_s: float = 2.0):
+    def __init__(self, *, center_tolerance: float = 0.12,
+                 max_frame_age_s: float = DEFAULT_MAX_FRAME_AGE_S):
         if not 0 < center_tolerance < 0.5:
             raise ValueError("center_tolerance must be in (0, 0.5)")
         if not isfinite(max_frame_age_s) or max_frame_age_s <= 0:
@@ -167,7 +171,7 @@ class VisualGuidanceController:
             if self.pending_action_id is not None:
                 self.halt()
             return self._decision("STOP_REOBSERVE", "Selected door/sign track is lost", frame_id)
-        if target.score is not None and target.score < 0.3:
+        if target.score is not None and target.score < MIN_DETECTOR_SCORE:
             if self.pending_action_id is not None:
                 self.halt()
             return self._decision("STOP_REOBSERVE", "Selected track has low detector confidence", frame_id)

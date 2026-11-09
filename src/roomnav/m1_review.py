@@ -123,13 +123,15 @@ def _normal_box(box: list[int], width: int, height: int) -> list[float]:
     return [box[0] / width, box[1] / height, box[2] / width, box[3] / height]
 
 
-def detection_manifest(records: Iterable[ReviewRecord], *, image_root: Path) -> list[dict]:
+def detection_manifest(records: Iterable[ReviewRecord], *, image_root: Path,
+                       include_provenance: bool = False) -> list[dict]:
     """Create the strict detector benchmark JSONL from complete review frames.
 
     One output line is emitted per complete frame.  A room sign is exported
     only when its room label is known and its instance is manually associated;
     directional/other signs are intentionally excluded from this door/sign
-    benchmark.
+    benchmark. Offline integration may request source review line numbers per
+    annotation; the default strict benchmark schema is unchanged.
     """
     grouped: dict[tuple[str, str], list[ReviewRecord]] = {}
     for record in records:
@@ -158,13 +160,18 @@ def detection_manifest(records: Iterable[ReviewRecord], *, image_root: Path) -> 
         annotations = []
         for record in group:
             item = record.data
+            instance_annotations = []
             door = item.get("door_bbox")
             if door is not None:
-                annotations.append({"category": "door", "bbox_xyxy_norm": _normal_box(door, width, height)})
+                instance_annotations.append({"category": "door", "bbox_xyxy_norm": _normal_box(door, width, height)})
             sign = item.get("sign_bbox")
             if (sign is not None and item.get("association_status") == "manual_confirmed"
                     and item.get("room_label_gt") not in (None, "", "unknown")):
-                annotations.append({"category": "sign", "bbox_xyxy_norm": _normal_box(sign, width, height)})
+                instance_annotations.append({"category": "sign", "bbox_xyxy_norm": _normal_box(sign, width, height)})
+            if include_provenance:
+                for annotation in instance_annotations:
+                    annotation["review_line_number"] = record.line_number
+            annotations.extend(instance_annotations)
         output.append({"image": str(image), "scene_id": f"{session}:{frame_id}",
                        "annotation_complete": True, "annotations": annotations})
     if not output:
