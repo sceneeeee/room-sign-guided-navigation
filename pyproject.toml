@@ -27,6 +27,7 @@ roomnav-baseline = "roomnav.cli:main"
 roomnav-llm = "roomnav.llm_cli:main"
 roomnav-evaluate = "roomnav.eval_cli:main"
 roomnav-stream = "roomnav.stream_cli:main"
+roomnav-offline = "roomnav.offline_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

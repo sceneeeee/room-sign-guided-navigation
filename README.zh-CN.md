@@ -1,8 +1,8 @@
 # 基于门牌与指示牌的室内导航（Room & Sign-Guided Indoor Navigation）
 
-[English](README.md) · **项目进度（2026-11-09）：M1 关键帧人工复核与可复现校验已完成阶段性交付；完整 M1 感知验收仍有 2 帧待补标，M3/M4 现场闭环尚未完成**
+[English](README.md) · **项目进度（2026-11-09）：M3.1 已完成真实视频稀疏离线回放验证；M3.2 观察建议仍为原型，M3/M4 现场闭环尚未完成**
 
-当前 M1 复核边界：21 条人工复核实例记录、20 个关键帧，其中 18 帧完整、2 帧不完整，覆盖 4 个实体门（LSS101、LSS124、LSS118、LSS119）。严格 M1 Observation 回放仍只有 3 条（LSS101、LSS124、LSS119）；LSS118 尚未写入该回放。可用 `python3 scripts/validate_m1_review.py` 复核并导出检测评测清单。
+当前 M1 复核边界：21 条人工复核实例记录、20 个关键帧，其中 18 帧完整、2 帧不完整，覆盖 4 个实体门（LSS101、LSS124、LSS118、LSS119）。既有三门人工关联 M1 回放包含 3 条 Observation（LSS101、LSS124、LSS119）；LSS118 尚未写入该历史回放。新增 detector 视频证据在下文单独汇报。可用 `python3 scripts/validate_m1_review.py` 复核并导出检测评测清单。
 
 ## 研究目标与边界
 
@@ -18,7 +18,7 @@
 - **未来阶段——机器人执行：** 尽量复用同一套 RGB 感知、LandmarkMemory 和高层策略；机器人通过里程计、LiDAR SLAM、Nav2 与避障控制完成运动。**SLAM 提供定位/几何地图，Nav2 负责规划和控制，不替 RGB 策略判定房号或选择搜索目标。** 但将“观察门 D07”的视觉目标转换为可执行、安全的机器人动作，仍需专门设计执行适配层，并以实机实验验证。
 - **重要边界：** 目前目标为图像中的相对方向与短步动作，不是从单帧 RGB 精确测出门的米制坐标、门前全局 Approach Pose，或在未知障碍环境中保证可通行。人体安全能力不能算作算法自动避障能力。
 
-**M1 线上进展（PR #4，尚未合并 main）：** M0/M2.4 集成、门/标牌候选检测与短期跟踪、M1 OCR 事件适配、M3 视觉短动作提示均有离线可测试实现。已有 YOLO-World 在同一扇门的 3 张相关图像中未检出门，唯一 sign 候选为开关/插座误检，因此新增[RGB 检测模型与提示词离线对照工具](docs/m1-detector-benchmark.zh-CN.md)；支持 YOLO-World / YOLOE、阈值扫描和候选框可视化。**YOLOE 的这组新参数尚无真实推理结果，完整寻房仍未实现或验证。**
+**M1 线上进展（PR #4 已合并 main）：** M0/M2.4 集成、门/标牌候选检测与短期跟踪、M1 OCR 事件适配、M3 视觉短动作提示均有离线可测试实现。早期 YOLO-World 在同一扇门的 3 张相关图像中漏检，唯一 sign 候选为开关/插座误检。后续已有一组 YOLOE 配置的真实录像推理结果，详见[阶段验证摘要](docs/m31-validation-summary.md)；这些候选/OCR 读数不等于检测准确率或完整寻房成功。[模型对照工具](docs/m1-detector-benchmark.zh-CN.md)中的其他配置仍需独立评估。
 
 ### 目标系统架构（计划，不是当前代码）
 
@@ -72,21 +72,21 @@ RGB 连续观测（现在手机，未来机器人摄像头）
 
 **2026-11-07 · M1 → M2.4 现场事件离线集成：** 三条人工关联观测 `LSS101 → LSS124 → LSS119` 已通过 `M1Session` / `StreamSession` 及现有 JSONL CLI 回放，不查询预标注地图。目标 LSS119 的动作依次为 `INSUFFICIENT_EVIDENCE → INSUFFICIENT_EVIDENCE → REOBSERVE`，人工确认数为 0，无 FOUND；时间戳全部保留原始 `0.0` 占位。场景单测使用隔离合成夹具，真实地图缺失依赖待组员修复。[回放命令、证据与限制](docs/m1-m2-offline-adapter.md)。这不是实时闭环寻房成功验证。
 
-截至 2026-10-23，草稿 [PR #4](https://github.com/sceneeeee/room-sign-guided-navigation/pull/4) 的 `feat/online-rgb-guidance-integration` 分支已整合 M0/M2.4、增加可测试的 M1 OCR→M2 适配、保守图像轨迹关联和视觉方向提示，并新增 **独立 RGB 候选检测/引导演示入口** `apps/rgb_guidance_demo.py`（详见 [运行说明](docs/rgb-guidance-demo.md)）。这些均为待实机核验的开发能力；**没有宣称门检测准确率、现场闭环成功率，也没有替换原有 M0 页面**。线下标注与测试依赖 [Issue #2](https://github.com/sceneeeee/room-sign-guided-navigation/issues/2)。
+原型经 [PR #4](https://github.com/sceneeeee/room-sign-guided-navigation/pull/4) 合并进入 `main`，已整合 M0/M2.4、增加可测试的 M1 OCR→M2 适配、保守图像轨迹关联和视觉方向提示，并新增 **独立 RGB 候选检测/引导演示入口** `apps/rgb_guidance_demo.py`（详见 [运行说明](docs/rgb-guidance-demo.md)）。这些均为待实机核验的开发能力；**没有宣称门检测准确率、现场闭环成功率，也没有替换原有 M0 页面**。线下标注与测试依赖 [Issue #2](https://github.com/sceneeeee/room-sign-guided-navigation/issues/2)。
 
-## 开发进度快照（2026-10-21）
+## 开发进度快照（2026-11-09）
 
 **请区分项目进度与 `main` 实际可运行的代码：**
 
-- **`main`（当前分支）：** 已通过 PR #1 合并 M0 的浏览器/Gradio/RapidOCR 定时采样、采样帧与 OCR 日志、人工复核及 CSV/关键帧导出；**新增录制保存无损 PNG**，2026-10-18 已采集的历史样本仍为 JPEG。`main` **尚不包含** M2.4 流式推理与完整 M1/M3 寻房闭环。
+- **`main`（当前基线）：** 已通过 PR #1 合并 M0 的浏览器/Gradio/RapidOCR 定时采样、采样帧与 OCR 日志、人工复核及 CSV/关键帧导出；**新增录制保存无损 PNG**，2026-10-18 已采集的历史样本仍为 JPEG。PR #4 已合并 M2.4 流式推理、M1 适配与 M3 有界视觉引导原型，PR #6 已合并 M1 人工复核校验/导出；完整实时寻房验收仍待完成。
 - **[PR #1 — M0 现场采集与实验结果](https://github.com/sceneeeee/room-sign-guided-navigation/pull/1)：** 已于 **2026-10-20 合并到 `main`**，合并提交 [`c247107`](https://github.com/sceneeeee/room-sign-guided-navigation/commit/c2471077cba6be5b393ffd4fb905c9e46d26f672)。此前 Review 要求的真值补录与统计口径、后续无损保存、Gradio 版本固定及录制复测均已处理；现场旧 JPG 未修改。
-- **[`feat/m2-reasoning`](https://github.com/sceneeeee/room-sign-guided-navigation/tree/feat/m2-reasoning)：** M2.1–M2.4 已实现并推送（M2.4 功能提交 `65c7e26`），**尚未合并进 `main`**；下述 M2 命令和实验结果属于此分支。该分支也**尚未同步 PR #1 合并后的 M0 采集/复核代码**。
+- **[`feat/m2-reasoning`](https://github.com/sceneeeee/room-sign-guided-navigation/tree/feat/m2-reasoning)：** M2.1–M2.4 已实现并推送（M2.4 功能提交 `65c7e26`），**已通过 PR #4 集成进 `main`**；历史评估数字仍只描述原实验。
 
 **实际完成情况与限制：**
 
 - **M0 · 有限现场验证：** 2026-10-18，使用**手机 → Camo → MacBook 浏览器 → SSH → Linux RapidOCR**，在约 **2 m、正面、镜头高 1.0 m** 的单一条件下，对实物门牌 `LSS101` 完成 **1 次定点 Record、共 6 张采样帧**。测试者确认六帧均对应实物 `LSS101`；逐帧完整编号识别为 **5/6（83.3%）**，1 帧无文字。远端 OCR 耗时 **0.54–1.09 秒/帧**，不含端到端传输与显示。这只覆盖一扇门、一个条件，不能外推为其他门牌或现场条件的准确率。 **这六帧来自一次 Record，不是六次独立试验；旧记录为有损 JPG，后续代码改为 PNG。**
 - **M1 · 部分实现（离线契约）：** `RoomOCRSample`/`M1Session` 已能从原始 OCR 筛选完整房号、保留拒绝样本、按 `session_id:frame_id:region_id` 去重，并仅在人工/连续跟踪明确提供物理门 ID 时输出 `landmark_id`。**尚未完成真实走廊的门/门牌检测、跨帧跟踪和至少 3 扇实体门验收；不能把离线合成测试写成 M1 现场完成。**
-- **M2 · 开发分支已独立实现：** M2.1 `LandmarkMemory`；M2.2 编号规则基线；M2.3a 受约束文本 LLM Planner 与安全回退；M2.3b 本地 Ollama/Qwen3-4B；M2.3c 冻结 20 场景评估；M2.3d 可选 Prompt v2/v3（**v2 默认，v3 策略效果仍不稳定**）；M2.4 JSONL/标准输入流式观测、增量规则决策与同帧重复计数修复。**本地 WSL 全量 194 项单元测试通过**。模拟 `FB541 → FB543 → FB545` 回放可依次返回 `REOBSERVE` / `VERIFY_TARGET` / 人工确认后 `FOUND`，但这**不是现场寻房成功案例**。
+- **M2 · 已实现并经 PR #4 合并：** M2.1 `LandmarkMemory`；M2.2 编号规则基线；M2.3a 受约束文本 LLM Planner 与安全回退；M2.3b 本地 Ollama/Qwen3-4B；M2.3c 冻结 20 场景评估；M2.3d 可选 Prompt v2/v3（**v2 默认，v3 策略效果仍不稳定**）；M2.4 JSONL/标准输入流式观测、增量规则决策与同帧重复计数修复。**本地 WSL 全量 194 项单元测试通过**。模拟 `FB541 → FB543 → FB545` 回放可依次返回 `REOBSERVE` / `VERIFY_TARGET` / 人工确认后 `FOUND`，但这**不是现场寻房成功案例**。
 - **历史离线对照（Prompt v2）：** 20 个**人工设计、冻结的单步场景**中，旧 Rule **19/20** 动作合法且可接受；Qwen **10/20** 可接受、**20/20** 合法、**0** 次 fallback、**17/20** 弃权。M2.4 修复已知同帧 Bug 后，Rule 在**同一套已暴露**场景上回归为 **20/20**；这是修复回归，**不是独立泛化验证**。Prompt v3 只有 5 次开发检查，不能据此推断真实策略更优。
 - **M3/M4 · 尚未开展真实闭环与正式对照：** M2.4 尚未收到实时 M1 观测；没有多门牌实地寻房的成功率、查看门数、行走时间/距离指标。当前使用文本 OCR + Rule / 文本 Qwen，未部署 VLM，现阶段也不必以 VLM 为前置条件。
 
@@ -108,6 +108,8 @@ LandmarkMemory → Rule / 可选文本 Qwen     [M2：开发分支独立可运�
 
 浏览器以约 **1.5 秒/帧**采样，而非 30 FPS 连续视频。每次 Record 先稳定镜头约 5 秒，再采样、OCR、保存约 12 秒并自动停止。**当前 `main` 已支持保存后续 PNG 无损采样帧、原始 OCR、人工复核及导出**；Gradio UI 依赖固定为 **6.30.0**。原始数据位于 Linux 本地 `data/live_sessions/`，2026-10-18 的既有 JPG 不会自动转换。OCR 不是人工确认真值，`segment_id` / `side` 可人工标注，不代表定位或 SLAM。
 
+**M3.1 离线阶段验证（本开发分支）：** 两个 MP4 各完整解码 2,499 帧，完成对应 21 帧 YOLOE/RapidOCR 对照及 45 帧真实连续采样。1080p 视频读出 LSS101/LSS124/LSS119，实际动作仍全部 STOP_REOBSERVE。人工标注绑定、实体门关联和现场闭环仍未验证。可选 [M3.2 观察建议](docs/m32-inspection-interface.md)不授权移动：墙面误报即使稳定十帧也可能获得建议。[验证与限制](docs/m31-validation-summary.md) · [命令与回放](docs/m31-offline-replay.md)。
+
 ## 快速开始
 
 **本分支的 M0 程序**（远程推理电脑，Python 3.10+）：
@@ -127,10 +129,9 @@ ssh -N -L 7860:127.0.0.1:7860 USER@GPU_HOST
 
 在 MacBook 浏览器打开 `http://127.0.0.1:7860`，授权访问摄像头；摄像头由 **MacBook 浏览器**采集，SSH 只转发网页连接。每轮先填写采集条件；点击 `Record` 后约 5 秒用于稳定相机，不做 OCR 或保存；随后约 12 秒采样、识别、保存并自动停止。首次加载 OCR 模型可能较慢；界面耗时仅为**远端 OCR 执行时间**，不包含网络、排队与显示延迟。详见[部署说明](docs/setup.zh-CN.md)。
 
-**M2.4 离线流式回放**需先切换到开发分支（以下命令**不能直接在 `main` 使用**）：
+**M2.4 离线流式回放**已随 PR #4 合并，可直接在 `main` 使用：
 
 ~~~bash
-git switch feat/m2-reasoning
 pip install -e .
 python -m roomnav.stream_cli --target FB545 --input examples/m24_stream_demo.jsonl
 python -m unittest discover -s tests -q
@@ -144,7 +145,7 @@ python -m unittest discover -s tests -q
 | --- | --- | --- |
 | **M0 · 取帧/OCR** | 远程 OCR、定时取帧、PNG 保存、人工复核和现场导出 | **PR #1 已合并 `main`**；LSS101 单条件 1 次 Record / 6 帧，5/6 逐帧完整识别，其他条件仍待验证 |
 | **M1 · 视觉感知** | 完整房号提取、同门跨帧关联、不同门牌去重与观测 ID | **队友下一阶段重点**，未完成 |
-| **M2 · 记忆与策略** | Rule / 文本 Qwen、离线评估、流式 JSONL 决策 | **M2.1–M2.4 已在开发分支完成**，尚未接真实 M1 输入 |
+| **M2 · 记忆与策略** | Rule / 文本 Qwen、离线评估、流式 JSONL 决策 | **M2.1–M2.4 已随 PR #4 合并**，三条人工关联现场事件已离线回放 |
 | **M3 · 现场寻房闭环** | 将 M1 输出接入 M2.4，由人执行观察建议 | 尚未集成 |
 | **M4 · 受控对照** | 逐门搜索 vs Rule vs 文本 LLM；记录成功率与成本 | 尚未开始 |
 
@@ -152,7 +153,7 @@ python -m unittest discover -s tests -q
 - **成员 B（感知/现场）：** 维护 M0 采集与可复现实验记录，继续开发 M1 完整门牌提取、物理门关联、真实观测 ID 和现场测试。
 - **共同：** 固定 `Observation` 数据契约，区分 OCR 原始证据与人工确认，分析失败案例并完成多门牌实地演示。
 
-**近期工作：** 队友从最新 `main` 创建独立 M1 分支，完成完整房号提取、可靠 `frame_id` / `observation_id`、同一实体门的稳定 `landmark_id` 关联与可回放 JSONL，按 [M2.4 Observation 接口](https://github.com/sceneeeee/room-sign-guided-navigation/blob/feat/m2-reasoning/docs/m24-streaming.zh-CN.md) 输出；先用**至少 3 扇不同实体门**验证，并保留误读/漏检样本。随后由成员 A 接入 M2.4，开始 M3 的人机闭环联调。**M1/M3 尚未完成，M2 也尚未合并。**
+**近期工作：** 恢复原审核关键帧与提取来源以建立可信 GT 绑定，继续 M3.2 候选核验/选择和独立执行授权；M3.3 实时现场验收仍待完成。本阶段离线 PR 不关闭 Issue #5。详见[阶段验证摘要](docs/m31-validation-summary.md)。
 
 ## 参考资料与文档
 

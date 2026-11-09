@@ -15,6 +15,35 @@ def sample(text, frame="f1", *, door=None, association="none", region="r0"):
 
 
 class M1PipelineTests(unittest.TestCase):
+    def test_capture_source_context_cannot_change_after_acceptance_or_rejection(self):
+        for first, later in (("poster", "unverified"), ("unverified", "poster")):
+            with self.subTest(first=first):
+                session = M1Session("s1")
+                event = sample("FB545")
+                session.ingest(event, source_context=first)
+                before = copy.deepcopy((session.accepted, session.rejected))
+                with self.assertRaisesRegex(ValueError, "source_context"):
+                    session.ingest(event, source_context=later)
+                self.assertEqual((session.accepted, session.rejected), before)
+
+    def test_non_room_context_rejects_valid_format_without_room_evidence(self):
+        for context in ("directional_sign", "poster"):
+            with self.subTest(context=context):
+                session = M1Session("s1")
+                result = session.ingest(sample("FB545"), source_context=context)
+                self.assertEqual(result.status, "rejected")
+                self.assertEqual(result.reason, "non_room_sign_context")
+                self.assertIsNone(result.observation)
+                self.assertEqual(session.summary()["accepted_count"], 0)
+                self.assertEqual(session.rejected[0]["raw_text"], "FB545")
+
+    def test_unknown_context_is_rejected_before_mutation(self):
+        session = M1Session("s1")
+        with self.assertRaises(ValueError):
+            session.ingest(sample("FB545"), source_context="verified_by_guessing")
+        self.assertEqual(session.accepted, [])
+        self.assertEqual(session.rejected, [])
+
     def test_preserves_rejected_ocr_and_accepts_complete_reading(self):
         session = M1Session("s1")
         self.assertEqual(session.ingest(sample("FB54? ")).status, "rejected")
