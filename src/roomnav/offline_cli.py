@@ -115,6 +115,19 @@ def main(argv=None):
     process.add_argument("--output", type=Path, default=Path("outputs/m31/events.jsonl"))
     replay = commands.add_parser("replay")
     replay.add_argument("log", type=Path)
+    approach = commands.add_parser("approach", help="Non-executing door advice from a saved detector log")
+    approach.add_argument("--input", type=Path, required=True)
+    approach.add_argument("--output", type=Path, required=True)
+    approach.add_argument("--manual-selections", type=Path)
+    approach.add_argument("--frame-reviews", type=Path,
+                          help="Explicit current-frame human door/plate reviews; never automatic evidence")
+    approach.add_argument("--video", type=Path)
+    approach.add_argument("--frames-dir", type=Path)
+    approach.add_argument("--demo-video", action="store_true")
+    approach.add_argument("--preview-policy", choices=("visual_advisory", "strict_source"),
+                          help="Versioned suggestion policy; strict_source preserves schema2 behavior")
+    approach_replay = commands.add_parser("approach-replay")
+    approach_replay.add_argument("log", type=Path)
     fixture = commands.add_parser("fixture")
     fixture.add_argument("--input", type=Path, required=True)
     fixture.add_argument("--output", type=Path, required=True)
@@ -126,10 +139,28 @@ def main(argv=None):
             process_video(args)
         elif args.command == "fixture":
             process_fixture(args)
+        elif args.command == "approach":
+            from .offline_approach import convert_detector_log, read_records, write_preview_artifacts
+            manual = read_records(args.manual_selections) if args.manual_selections else []
+            reviews = read_records(args.frame_reviews) if args.frame_reviews else []
+            from .door_approach import ADVISORY_SCHEMA, SCHEMA as STRICT_SCHEMA
+            # Explicit review files retain their historical strict policy
+            # unless callers explicitly choose the new policy.
+            policy = args.preview_policy or ("strict_source" if args.frame_reviews else "visual_advisory")
+            schema = STRICT_SCHEMA if policy == "strict_source" else ADVISORY_SCHEMA
+            rows = convert_detector_log(read_records(args.input), manual_selections=manual, frame_reviews=reviews,
+                                        preview_schema=schema)
+            rows[0]["source_log_sha256"] = _digest(args.input)
+            if args.frame_reviews:
+                rows[0]["source_reviews_sha256"] = _digest(args.frame_reviews)
+            print(json.dumps(write_preview_artifacts(rows, args.output, video=args.video,
+                                                     frames_dir=args.frames_dir, demo_video=args.demo_video)))
         else:
+            from .door_approach import replay_approach_log
             with args.log.open(encoding="utf-8") as handle:
                 rows = (parse_event_line(line) for line in handle if line.strip())
-                count = sum(1 for _ in replay_log(rows))
+                replay_fn = replay_approach_log if args.command == "approach-replay" else replay_log
+                count = sum(1 for _ in replay_fn(rows))
             print(json.dumps({"status": "verified", "events": count, "log": str(args.log),
                               "validation": "deterministic_event_replay_only"}))
         return 0

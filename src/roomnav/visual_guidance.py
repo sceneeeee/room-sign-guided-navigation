@@ -73,6 +73,18 @@ class GuidanceDecision:
         return asdict(self)
 
 
+def camera_relative_advice(target: VisualCandidate, *, center_tolerance: float = .12) -> tuple[Action, str]:
+    """Geometry only. Callers retain quality, selection and execution gates."""
+    if target.center_x < 0.5 - center_tolerance:
+        return "TURN_LEFT", "Target is left of the image center"
+    if target.center_x > 0.5 + center_tolerance:
+        return "TURN_RIGHT", "Target is right of the image center"
+    if target.readable:
+        return "STOP_AND_READ", "Target is centered and visually readable; perform independent OCR"
+    return ("FORWARD_SHORT",
+            "Target is centered but not readable; approach only if human confirms the path is safe")
+
+
 class VisualGuidanceController:
     """Single selected-track visual alignment and tentative approach.
 
@@ -178,14 +190,6 @@ class VisualGuidanceController:
         if self.pending_action_id is not None:
             return self._decision("WAIT_EXECUTION", "Await feedback for previous short motion", frame_id)
 
-        if target.center_x < 0.5 - self.center_tolerance:
-            return self._decision("TURN_LEFT", "Target is left of the image center", frame_id, motion=True)
-        if target.center_x > 0.5 + self.center_tolerance:
-            return self._decision("TURN_RIGHT", "Target is right of the image center", frame_id, motion=True)
-        if target.readable:
-            return self._decision("STOP_AND_READ", "Target is centered and visually readable; perform independent OCR", frame_id)
-        return self._decision(
-            "FORWARD_SHORT",
-            "Target is centered but not readable; approach only if human confirms the path is safe",
-            frame_id, motion=True,
-        )
+        action, reason = camera_relative_advice(target, center_tolerance=self.center_tolerance)
+        return self._decision(action, reason, frame_id,
+                              motion=action in ("TURN_LEFT", "TURN_RIGHT", "FORWARD_SHORT"))

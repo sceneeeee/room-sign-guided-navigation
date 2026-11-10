@@ -18,6 +18,7 @@ import gradio as gr
 from roomnav.rgb_perception import YOLOWorldDetector
 from roomnav.visual_tracking import ConservativeTracker
 from roomnav.visual_guidance import GuidanceDecision, VisualCandidate, VisualGuidanceController
+from roomnav.live_approach import LiveDoorApproachSession
 
 
 @dataclass
@@ -73,6 +74,21 @@ ACTION_ZH = {
 
 def process_frame(frame, state, *, predict=None, now=None):
     """Pure callback logic accepting an injectable detector for offline tests."""
+    if isinstance(state, LiveDoorApproachSession):
+        if frame is None:
+            return None, gr.update(), "等待 RGB 视频帧", state, "尚无视频"
+        try:
+            receipt = state.clock() if now is None else now
+            result = state.process_rgb(frame, predict=predict or detector(), received_s=receipt)
+            overlay = annotate_frame(frame, state.candidates, result["target_track_id"])
+            choices = [(c.track_id, c.track_id) for c in state.candidates if c.category == "door"]
+            return (overlay, gr.update(choices=choices), ACTION_ZH.get(result["action"], result["action"]), state,
+                    f"Action: {result['action']} | Reason: {result['reason']}\n"
+                    f"motion_authorized=false | action_id={result['action_id']}\n"
+                    f"Server receipt clock; camera capture unknown: {result['timing']}")
+        except Exception as exc:
+            state.stop("processing_failure")
+            return None, gr.update(choices=[], value=None), ACTION_ZH["STOP_REOBSERVE"], state, str(exc)
     if state is None:
         state = GuidanceSession()
     if frame is None:
@@ -130,6 +146,12 @@ def process_frame(frame, state, *, predict=None, now=None):
 
 
 def select_target(track_id, state):
+    if isinstance(state, LiveDoorApproachSession):
+        try:
+            state.select_target(track_id)
+            return f"观察目标 {track_id} 已选中；不是实体门或房号确认"
+        except ValueError as exc:
+            return str(exc)
     if state is None or not track_id:
         return "请先等待图像中的候选门出现并选择"
     if (track_id not in {c.track_id for c in state.candidates}
@@ -147,6 +169,11 @@ def select_target(track_id, state):
 
 
 def confirm_action(state, safe):
+    if isinstance(state, LiveDoorApproachSession):
+        if state.controller.pending_action_id is None:
+            return "当前没有待反馈动作", state
+        state.feedback(state.controller.pending_action_id, completed=safe, safe=safe)
+        return "已记录人的反馈，等待新帧" if safe else "已拒绝并停止", state
     if state is None or state.controller.pending_action_id is None:
         return "当前没有待确认的移动动作", state
     action_id = state.controller.pending_action_id
@@ -159,6 +186,9 @@ def confirm_action(state, safe):
 
 
 def halt(state):
+    if isinstance(state, LiveDoorApproachSession):
+        state.stop()
+        return "已停止；重新开始需要新会话", state
     if state is None:
         state = GuidanceSession()
     state.controller.halt()
@@ -173,7 +203,7 @@ with gr.Blocks(title="RoomNav RGB Visual Guidance — experimental") as demo:
         "只负责候选门框和相机相对方向；**人负责避障与安全**。"
         "仅将帧发送到当前服务端，不自动录像，不声称准确门牌识别或完整导航。"
     )
-    session = gr.State(value=lambda: GuidanceSession())
+    session = gr.State(value=lambda: LiveDoorApproachSession())
     with gr.Row():
         with gr.Column():
             incoming = gr.Image(

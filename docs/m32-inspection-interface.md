@@ -1,5 +1,7 @@
 # M3.2 临时门观察建议接口
 
+更新：录像建议路径已在 [Recorded-video Door Approaching](m32-door-approaching.md) 实现并完成真实缓存验证。单门修订使用schema2，弱分竞争框不会被视为消歧，前进/停读额外要求独立的当前帧门/标牌来源复核；普通手选track不算来源复核。本文记录的 `--inspection-proposals` 仍是旧控制器旁路观察意图；新 `approach` 子命令独立输出逐帧对准/观察建议，不改变执行门禁。
+
 M3.1 真实连续片段验证显示，0.5 秒采样能延续部分图像 track，但不会产生可信实体门身份。现有 M2 编号推理需要明确关联的 landmark，`ReplaySession` 又仅在 M2 `VERIFY_TARGET` 时自动选可见目标，形成冷启动限制。`VisualGuidanceController` 本身已经能处理临时 track；它不要求永久 landmark。
 
 本接口提供独立的观察意图，供 M3.2 策略设计与离线评估使用。它不改变 M2 的导航语义，也不解除 M3 执行门禁。
@@ -76,4 +78,4 @@ PYTHONPATH=src python -m roomnav.offline_cli process \
 
 ## 执行状态
 
-这一步实现了可验证、可弃权的临时观察建议与已知非门牌文本拦截。它没有实现自动实体门绑定、语义目标搜索、执行端安全授权、真实反馈或重识别。下一步可以进入 M3.2 的候选核验和选择策略开发；在这些条件完成之前，实际 detector 回放保持 STOP_REOBSERVE，不宣称自主导航或 M3.3 完成。
+旧 `ReplaySession` 的 detector 控制输出继续保留上述停止行为；新的独立 `DoorApproachPreview` 已支持临时目标自动/人工选择与非执行性方向建议。它没有实现自动实体门绑定、执行端安全授权、真实反馈或重识别，不宣称自主导航或 M3.3 完成。实际效果与失败案例见[录像建议验证](m32-door-approaching.md)。

@@ -1,6 +1,6 @@
 # 基于门牌与指示牌的室内导航（Room & Sign-Guided Indoor Navigation）
 
-[English](README.md) · **项目进度（2026-11-09）：M3.1 已完成真实视频稀疏离线回放验证；M3.2 观察建议仍为原型，M3/M4 现场闭环尚未完成**
+[English](README.md) · **项目进度（2026-11-10）：M3.2 录像门接近建议已实现并测试；M3.3 手机实时验收尚未完成**
 
 当前 M1 复核边界：21 条人工复核实例记录、20 个关键帧，其中 18 帧完整、2 帧不完整，覆盖 4 个实体门（LSS101、LSS124、LSS118、LSS119）。既有三门人工关联 M1 回放包含 3 条 Observation（LSS101、LSS124、LSS119）；LSS118 尚未写入该历史回放。新增 detector 视频证据在下文单独汇报。可用 `python3 scripts/validate_m1_review.py` 复核并导出检测评测清单。
 
@@ -153,7 +153,7 @@ python -m unittest discover -s tests -q
 - **成员 B（感知/现场）：** 维护 M0 采集与可复现实验记录，继续开发 M1 完整门牌提取、物理门关联、真实观测 ID 和现场测试。
 - **共同：** 固定 `Observation` 数据契约，区分 OCR 原始证据与人工确认，分析失败案例并完成多门牌实地演示。
 
-**近期工作：** 恢复原审核关键帧与提取来源以建立可信 GT 绑定，继续 M3.2 候选核验/选择和独立执行授权；M3.3 实时现场验收仍待完成。本阶段离线 PR 不关闭 Issue #5。详见[阶段验证摘要](docs/m31-validation-summary.md)。
+**M3.2 录像建议：** 独立的 [Door Approaching Preview](docs/m32-door-approaching.md) 已产生真实 detector 支持的左右建议，明确区分自动/人工选门。单门修订已阻止已知墙面误停读、保留弱分竞争候选，并输出各动作阻止条件。真实前进及可信实体门停读仍未验证；除合适素材外还需独立的当前帧来源复核。所有输出 `motion_authorized=false`，无 execution feedback 或 FOUND。近期继续 M3.3 有人监督的手机接入、候选/门牌核验与可信 GT 绑定。Issue #5 保持开放。
 
 ## 参考资料与文档
 
@@ -176,3 +176,5 @@ python -m unittest discover -s tests -q
 ## 数据与许可证
 
 不要将包含可识别个人信息的原始视频、图片、账户凭据上传到仓库。目前尚未选择开源许可证，公开复用与发布前需明确许可。
+
+版本3已将受限视觉建议与身份确认分离，并增加等待人工反馈的实时会话。[新策略与 Gradio 接口](docs/m32-live-interface.md)。此前逐帧来源复核硬要求属于版本2。

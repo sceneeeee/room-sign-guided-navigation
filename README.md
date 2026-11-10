@@ -1,6 +1,6 @@
 # Room & Sign-Guided Indoor Navigation
 
-[中文说明](README.zh-CN.md) · **Project status (2026-11-09): sampled real-video M3.1 offline replay validated; M3.2 observation suggestions remain a prototype; live M3/M4 search is pending**
+[中文说明](README.zh-CN.md) · **Project status (2026-11-10): M3.2 recorded-video door advice implemented and tested; live M3.3 acceptance is pending**
 
 Current M1 review boundary: 21 human-reviewed instance records across 20 keyframes, with 18 complete frames and 2 incomplete frames, covering 4 physical doors (LSS101, LSS124, LSS118, LSS119). The earlier manually associated M1 replay contains 3 observations (LSS101, LSS124, LSS119); LSS118 is present in the review data but has not been added to that historical replay. New detector-video evidence is reported separately below. Run `python3 scripts/validate_m1_review.py` to validate the review and export a detector-evaluation manifest.
 
@@ -149,7 +149,7 @@ The streaming CLI defaults to **Rule-only** and makes no automatic Ollama reques
 - **Member B — perception/field:** M0 collection and reproducible field records, followed by M1 room-label extraction, physical landmark association, live observation IDs and real-corridor tests.
 - **Joint:** agree on the Observation interface, preserve raw vs confirmed evidence, review failure cases, and run a multi-door field demonstration.
 
-**Immediate next step:** recover the original reviewed keyframe images and extraction provenance for trusted GT bindings, then develop M3.2 candidate validation/selection and explicit execution authorization. M3.3 real-time field acceptance remains pending. This offline milestone does not close Issue #5; see [M3.1 validation](docs/m31-validation-summary.md).
+**M3.2 recorded-video advice:** the independent [Door Approaching preview](docs/m32-door-approaching.md) produces actual detector-supported left/right suggestions with explicit automatic/manual selection. The single-door revision blocks the known wall read error, retains weak competing candidates, and reports per-action gates. Real forward advice and trusted-door stop-and-read remain unverified; independent current-frame source review is required in addition to suitable footage. All advice has `motion_authorized=false`, without execution feedback or FOUND. Next: supervised M3.3 handheld integration, stronger candidate/plate checks, and trusted GT bindings. Issue #5 remains open.
 
 ## References and documentation
 
@@ -170,3 +170,5 @@ The streaming CLI defaults to **Rule-only** and makes no automatic Ollama reques
 ## Data and license
 
 Avoid committing identifiable raw camera footage, credentials or personal information. No open-source license has been selected; add one before public reuse or distribution.
+
+Schema3 now separates bounded visual advice from identity confirmation and adds a human-feedback live session. [Policy and Gradio interface](docs/m32-live-interface.md). Earlier strict-source requirements describe schema2.
