@@ -1,8 +1,10 @@
-# Isaac Sim 单门视觉引导实验
+# 8GB 受限配置下的单门视觉模块实验
 
 把当前 M3.2 的 `DoorApproachPreview` 接入 Isaac Sim，观察图像驱动的选门、对准、短距离接近和停读。相机每次移动后重新渲染，下一次动作由新画面的 YOLOE／RapidOCR 结果决定。
 
 [三组对照结果与审核证据](../../docs/experiments/isaac-single-door/README.zh-CN.md)。
+
+本入口用于受控场景中的模块联调和失败分析。实际运行GPU为RTX 4060 Laptop 8GB，低于Isaac Sim 6.2官方16GB最低显存配置。采用简化场景、单路RGB和运动学相机后完成了这些用例。完整单门接近、真实动作反馈、全楼资产负载和实时性能仍待独立验证。详细条件及官方来源见[硬件条件与实验简化](../../docs/experiments/isaac-single-door/README.zh-CN.md#硬件条件与实验简化)。
 
 ## 实验范围
 
@@ -60,5 +62,7 @@ PYTHONPATH=src python examples/isaac_single_door/verify.py \
 提交的紧凑审核包位于 `docs/experiments/isaac-single-door/`。其中的 gzip 日志包含逐帧感知、原策略输出、相机位姿、门投影真值和 RGB SHA256。使用 `--logs-only` 可以在无需 Isaac Sim、模型或原始 PNG 的机器上回放策略并核对评分。这个模式只验证已保存日志，完整 RGB 校验仍需本地运行目录。
 
 成功要求最终 `STOP_AND_READ`、关联 ROI 的唯一高置信度 OCR 房号解析为目标 `LSS119`、镜头朝向误差不超过12°，且整个选中轨迹与目标门的投影框 IoU 均不低于0.5。`approach_then_read` 进一步要求实际执行过前进动作。近处直接读到门牌会单独显示为读牌成功。空白门牌和墙面误报即使触发停读，也不计为成功。
+
+`success` 的具体含义为该判据下的 `read_target`。停止距离单独记录。已保存的三个 `approach_then_read` 用例各前进一次0.45米，最终距门约4.35米，门前到达与稳定接近流程仍需另行验收。
 
 11个用例用于开发与回归，场景已经被开发者观察过。保留失败输出，结果不能外推为实楼检测准确率或实地寻房成功率。M1／M2 的实体门关联、独立人工房号确认与 `FOUND` 仍需其自身验证。
