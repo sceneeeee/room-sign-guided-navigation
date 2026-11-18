@@ -157,6 +157,7 @@ python -m unittest discover -s tests -q
 
 ## 参考资料与文档
 
+- [8GB受限配置下的Isaac Sim单门模块实验与验证边界](examples/isaac_single_door/README.zh-CN.md)
 - [ReasonNav 项目主页（CoRL 2025）](https://reasonnav.github.io/)
 - [ReasonNav 官方代码](https://github.com/ReasonNav/ReasonNav)
 - [实验设计](docs/experiment.zh-CN.md)

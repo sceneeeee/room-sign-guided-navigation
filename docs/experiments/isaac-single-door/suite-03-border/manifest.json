@@ -1,0 +1,107 @@
+{
+  "cases": [
+    "left",
+    "right",
+    "center",
+    "near",
+    "medium",
+    "far",
+    "blank_plate",
+    "wall_only",
+    "competing_doors",
+    "occluded",
+    "wall_plate"
+  ],
+  "max_frames": 30,
+  "weights_file": "yoloe-11s-seg.pt",
+  "weights_sha256": "8e439445c87338b79d9ce21dec109f4621e26df67e94d26ea1a98c1e64dce3e3",
+  "source_sha256": {
+    "prepare_text_features.py": "d747b5a8dbfe51150e4a613e902fdce16cc4192c1f397c0e4fbb4ac6ad931563",
+    "run.py": "03d3b24cffbcc236596766e336948d3da672ad7640f6907af1d9414d1f134f05",
+    "perception_worker.py": "292a491ffa70a76de39697398284a9cc78e344eb6b7e1290d9a10f1dcdb97456",
+    "verify.py": "18dc7860ce7c767dd2b430c6401b1a0a352e6fcac8fdde53dbf25cb9878c7661",
+    "control.py": "a26c0aee61a91bd4bf0a701de05b7d476f98c7c36c892ef5530928b158647843",
+    "scene.py": "d06f8e91db18b7e480e4b2c4336290c0631ab4fe456a0169fde22bc9a3d7c201"
+  },
+  "roomnav_source_sha256": {
+    "door_approach.py": "ab99e796b3441ff69f84a19b853a3010ac0039ac81e7d680cf7c79c21e510af0",
+    "baseline.py": "81649652761a2ebe26464a1dedf63580400efe99afdebf6206171af2f307326b",
+    "offline_video.py": "50a4b4a16c612a2615d9bdcb6e4c153cb750e016750715f7b62442a42e8c28f5",
+    "observation.py": "0679bd04e5788fad404ea6ce1c79836943356dfad37bc00c11400bf01238a44d",
+    "llm_backend.py": "9ebb27daf8250199d5ae377afe9205d661fface839f45880d4abbbc9103f4dd7",
+    "confirmation.py": "91a92a6189db5fb1a3719633a2d8118d32f6b15859f5a6b2163961f780a75b48",
+    "inspection.py": "b95bf21875161589a15787696f7c997906f8158135a0aa2738dc99bc698e5270",
+    "offline_perception.py": "33743fd076c146faee842f54e7cb6f63262895b19675e6bfd6c97f8f5164be80",
+    "stream_cli.py": "a2a5d6877a325630c231183aa8b0bbcdf570562d6c1c97db6d2ec0a099e4f4f1",
+    "m1_scene_bridge.py": "bb008a6e7b4ce76fdc1f51eb9fc3f90f8c25af9d6efb601b46c0b86306e2e3b7",
+    "field_logging.py": "0d8881cdc07bc6b47d69b120b05854129e79d6b39ee123471597f3ae878dabc0",
+    "floor_scene.py": "293bd167ecdec4a722e9a34109059a180b1e973b3648149d92538131b9f17094",
+    "__init__.py": "3e805262fab31658eb007374a9492dffbdfb938270c3f406c64b924d3207a0de",
+    "m1_review.py": "20a4bffbb39dd89a5d1d2b04e93221016eaa875cb7e9e6cc2ed4e8b7332ce04e",
+    "stream.py": "8d84276b31ac55ee7a241cd9719595af513b77a18c2c9b3f5e8a4d12bf8cb402",
+    "m1_pipeline.py": "8dc1621d33361dadca6782ed680e71f7afcc9161db52f747c83eb11321cfb13e",
+    "eval_cli.py": "0f073c771ab53f11460e602ff340d7129e989a81358d19bf6940481f4045a3bb",
+    "llm_cli.py": "d1014a65b8172484056e034337c893a65df900cd6d1b33d9b979e3e3e6814519",
+    "ocr.py": "805382d75e546bddd364c40cd4e55bed9effd895999a0023d15008b635181231",
+    "visual_guidance.py": "c2412e4df4fa9a03ad8566f6834e1056d046f482e57e66a0bd463f14d2629b75",
+    "landmark.py": "b59b6d9abcc728610499e2b9f70da1f07ff3c2f47831b566079dc828c1661a19",
+    "detection_benchmark.py": "17b9a779d65955a0d2c028d8f0d07c5770dbc41ae4a47d908aefac3369804e01",
+    "evaluation.py": "e283b4eadb4cf364060975df00c33933e47fdd0b065f86f91db164df983e8108",
+    "offline_provenance.py": "ff4fa6cca21c23f2eeb5da00d2ba9348ace32b710d25e36a4f216de8610dcef2",
+    "cli.py": "b75e8e3ed3df323d21a90acb9c770b6d28660368e2484b956742e9b0d4fa3ce6",
+    "offline_approach.py": "c106ec799703b8553126e81d6c31ed40993be4c9ec84df7ae289edc3fc335305",
+    "m1_adapter.py": "6b1d6b623c40bed1f13d465b07fbb1c4ab67e692be0b4960bd193380ea364e57",
+    "field_export.py": "f12492d0c5f9e15b68bf16c5b13a29d7c5d709c84a3b644c445d0bb2bb778696",
+    "capture_timing.py": "188c116ed87ff6a858aededc46134bc80a3e22e4b769e07dd4217155abe7d9f2",
+    "offline_replay.py": "a9e5aecf9e8d6fb44e4bdd747deb41d056c2cb03100dd247e040df2a846580c0",
+    "live_approach.py": "0e64c45cf94cb56a26b6ac7d07fab70cbf2b71537621e77a8d88f377a1f5ae9c",
+    "openai_compatible.py": "e9f7f9c0034405b05d55d0889c40e2c408ee7863dbd7489bd5410cb9bbd1510a",
+    "sign_evidence.py": "cb56cb6d25c98100e3d3eb95dee13095e48af26832bebb792af8b0629c866758",
+    "rgb_perception.py": "cc2d335d13e353cebb7108ba09e798c53e5ae77d3e62bd6f8b08c5bf91c0afe3",
+    "memory.py": "bcdea88d2c0505dd531c9467a52d4a5a057a59eb848fed1128cd9132ea709950",
+    "offline_cli.py": "9d7a55780761a6b2dbaf5162dd010642fe74fb995d777c077b3dae458ae2e878",
+    "llm_planner.py": "efc747258bd709cd67e69941f3a1aae2cdf42167c13759854181e35067b5eb9b",
+    "visual_tracking.py": "48032ddef94d5081aab2a2f79543b557e702676655c65e803b7af536ad7c1d09"
+  },
+  "turn_step_deg": 4,
+  "forward_step_m": 0.45,
+  "max_read_attempts": 3,
+  "camera_height_m": 1.48,
+  "resolution": [
+    768,
+    432
+  ],
+  "policy_uses": "rendered RGB detector/OCR only",
+  "actuator": "bounded kinematic camera rig, no robot dynamics",
+  "perception": {
+    "ready": true,
+    "mobileclip_sha256": "a67804d1b0f07b8b9a20c1761ec0847f34660f5fa338ec70e8f3fce68ed95e54",
+    "cached_text_features_sha256": "9d03b39e578aa789a180acc960076c7c7902133f498080d1480d2d22b474bb1c",
+    "ocr_border_pixels": 12,
+    "versions": {
+      "torch": "2.2.2+cu121",
+      "torchvision": "0.17.2+cu121",
+      "ultralytics": "8.4.0",
+      "rapidocr": "3.10.0",
+      "onnxruntime": "1.23.2",
+      "numpy": "1.26.4"
+    },
+    "detector": {
+      "prompts": [
+        "door",
+        "room number sign",
+        "directional sign"
+      ],
+      "categories": [
+        "door",
+        "sign",
+        "sign"
+      ],
+      "confidence": 0.3,
+      "image_size": 640,
+      "device": "cuda:0"
+    }
+  },
+  "isaac_sim_version": "6.2.0.0",
+  "frame_time_basis": "simulation capture index / 2; not wall-clock latency"
+}
