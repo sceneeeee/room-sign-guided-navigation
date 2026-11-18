@@ -1,0 +1,34 @@
+{
+  "success": false,
+  "expected_failure": true,
+  "outcome": "stopped_without_verified_read",
+  "actions": {
+    "STOP_REOBSERVE": 7
+  },
+  "frames": 7,
+  "final_pose": {
+    "x": 0.0,
+    "y": -4.8,
+    "yaw_deg": 0.0
+  },
+  "distance_to_door_m": 4.8,
+  "bearing_error_deg": 0.0,
+  "final_selected_door_iou": 0.7984,
+  "minimum_selected_door_iou": 0.7956,
+  "approach_then_read": false,
+  "ocr_matches_target": false,
+  "policy_read_on_wall": false,
+  "forward_on_wall": false,
+  "final_reason": "needs_visual_support_beyond_door_score",
+  "halt_reason": null,
+  "case": "blank_plate",
+  "scene_variant": "blank_plate",
+  "input_domain": "isaac_sim_rendered_rgb",
+  "policy": "M3.2 visual_advisory",
+  "target_x": 0.0,
+  "first_pose": {
+    "x": 0.0,
+    "y": -4.8,
+    "yaw_deg": 0.0
+  }
+}

@@ -1,0 +1,235 @@
+{
+  "verified_scenes": [
+    {
+      "suite": "suite-01",
+      "case": "left",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-01",
+      "case": "right",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-01",
+      "case": "center",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-01",
+      "case": "near",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-01",
+      "case": "medium",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-01",
+      "case": "far",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-01",
+      "case": "blank_plate",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-01",
+      "case": "wall_only",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-01",
+      "case": "competing_doors",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 2
+    },
+    {
+      "suite": "suite-01",
+      "case": "occluded",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-01",
+      "case": "wall_plate",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-02-hires",
+      "case": "left",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-02-hires",
+      "case": "right",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-02-hires",
+      "case": "center",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-02-hires",
+      "case": "near",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-02-hires",
+      "case": "medium",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-02-hires",
+      "case": "far",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-02-hires",
+      "case": "blank_plate",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-02-hires",
+      "case": "wall_only",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-02-hires",
+      "case": "competing_doors",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 2
+    },
+    {
+      "suite": "suite-02-hires",
+      "case": "occluded",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-02-hires",
+      "case": "wall_plate",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-03-border",
+      "case": "left",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-03-border",
+      "case": "right",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-03-border",
+      "case": "center",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-03-border",
+      "case": "near",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-03-border",
+      "case": "medium",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-03-border",
+      "case": "far",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-03-border",
+      "case": "blank_plate",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-03-border",
+      "case": "wall_only",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-03-border",
+      "case": "competing_doors",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 2
+    },
+    {
+      "suite": "suite-03-border",
+      "case": "occluded",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    },
+    {
+      "suite": "suite-03-border",
+      "case": "wall_plate",
+      "scene_opened": true,
+      "camera_pose_verified": true,
+      "textures_resolved": 1
+    }
+  ]
+}

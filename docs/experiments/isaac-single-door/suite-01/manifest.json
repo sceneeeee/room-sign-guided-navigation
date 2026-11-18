@@ -1,0 +1,66 @@
+{
+  "cases": [
+    "left",
+    "right",
+    "center",
+    "near",
+    "medium",
+    "far",
+    "blank_plate",
+    "wall_only",
+    "competing_doors",
+    "occluded",
+    "wall_plate"
+  ],
+  "max_frames": 30,
+  "weights_file": "yoloe-11s-seg.pt",
+  "weights_sha256": "8e439445c87338b79d9ce21dec109f4621e26df67e94d26ea1a98c1e64dce3e3",
+  "source_sha256": {
+    "prepare_text_features.py": "d747b5a8dbfe51150e4a613e902fdce16cc4192c1f397c0e4fbb4ac6ad931563",
+    "run.py": "b85a986cec47e2ce4901e85fcb73d9ced896020afc257b24f01167056fb592c2",
+    "perception_worker.py": "7bbd5265343eebf9186f7c4b35ec6bb46735f1953b4f2d0aad0bca4de4e2b876",
+    "verify.py": "d946586cb38300625e8c33b28b7c9127e9a3d9b171bbb938ba74c81c7223c821",
+    "control.py": "70f16e1474cd9fa1c4698a862ed81e323d2587ef837cb0b3ab0e169520dfc703",
+    "scene.py": "d06f8e91db18b7e480e4b2c4336290c0631ab4fe456a0169fde22bc9a3d7c201"
+  },
+  "turn_step_deg": 4,
+  "forward_step_m": 0.45,
+  "max_read_attempts": 3,
+  "camera_height_m": 1.48,
+  "resolution": [
+    768,
+    432
+  ],
+  "policy_uses": "rendered RGB detector/OCR only",
+  "actuator": "bounded kinematic camera rig, no robot dynamics",
+  "perception": {
+    "ready": true,
+    "mobileclip_sha256": "a67804d1b0f07b8b9a20c1761ec0847f34660f5fa338ec70e8f3fce68ed95e54",
+    "cached_text_features_sha256": "9d03b39e578aa789a180acc960076c7c7902133f498080d1480d2d22b474bb1c",
+    "versions": {
+      "torch": "2.2.2+cu121",
+      "torchvision": "0.17.2+cu121",
+      "ultralytics": "8.4.0",
+      "rapidocr": "3.10.0",
+      "onnxruntime": "1.23.2",
+      "numpy": "1.26.4"
+    },
+    "detector": {
+      "prompts": [
+        "door",
+        "room number sign",
+        "directional sign"
+      ],
+      "categories": [
+        "door",
+        "sign",
+        "sign"
+      ],
+      "confidence": 0.3,
+      "image_size": 640,
+      "device": "cuda:0"
+    }
+  },
+  "isaac_sim_version": "6.2.0.0",
+  "frame_time_basis": "simulation capture index / 2; not wall-clock latency"
+}

@@ -153,6 +153,7 @@ The streaming CLI defaults to **Rule-only** and makes no automatic Ollama reques
 
 ## References and documentation
 
+- [Isaac Sim single-door visual feedback experiment (中文)](examples/isaac_single_door/README.zh-CN.md)
 - [ReasonNav — Human-like Navigation in a World Built for Humans](https://reasonnav.github.io/) (CoRL 2025)
 - [ReasonNav source code](https://github.com/ReasonNav/ReasonNav)
 - [Experimental protocol (中文)](docs/experiment.zh-CN.md)

@@ -1,0 +1,36 @@
+{
+  "success": false,
+  "expected_failure": false,
+  "outcome": "stopped_without_verified_read",
+  "actions": {
+    "STOP_AND_READ": 3,
+    "STOP_REOBSERVE": 3,
+    "TURN_LEFT": 4
+  },
+  "frames": 10,
+  "final_pose": {
+    "x": 0.0,
+    "y": -4.8,
+    "yaw_deg": -6.0
+  },
+  "distance_to_door_m": 4.8,
+  "bearing_error_deg": 6.0,
+  "final_selected_door_iou": 0.8139,
+  "minimum_selected_door_iou": 0.8003,
+  "approach_then_read": false,
+  "ocr_matches_target": false,
+  "policy_read_on_wall": false,
+  "forward_on_wall": false,
+  "final_reason": "Candidate sign ROI permits an OCR attempt; source and room remain unverified",
+  "halt_reason": null,
+  "case": "left",
+  "scene_variant": "standard",
+  "input_domain": "isaac_sim_rendered_rgb",
+  "policy": "M3.2 visual_advisory",
+  "target_x": 0.0,
+  "first_pose": {
+    "x": 0.0,
+    "y": -4.8,
+    "yaw_deg": -22
+  }
+}
