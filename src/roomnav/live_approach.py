@@ -148,13 +148,24 @@ class LiveDoorApproachSession:
         if (version != self.version or received_s <= self.feedback_s
                 or capture and capture["clock_id"] == "server_monotonic" and capture["timestamp_s"] <= self.feedback_s):
             return self._result("STOP_REOBSERVE", "Interaction changed during capture/inference; require a later frame", timing=timing)
-        event.update(now_s=finished, motion_advice_enabled=self.controller.pending_action_id is None)
-        output = self.preview.process_event(event)
+        return self.process_perception(event, finished=finished, timing=timing, digest=digest)
+
+    def process_perception(self, event, *, finished, timing=None, digest=None, hold_for_read=None):
+        """Consume a fresh stamped M1 event using the same preview and feedback latch."""
+        if self.stopped:
+            return self._result("STOP_REOBSERVE", "Session stopped")
+        stamp = FrameStamp.from_dict(event["frame"])
+        self.last_received_s = stamp.timestamp_s
+        event = dict(event, now_s=finished, motion_advice_enabled=self.controller.pending_action_id is None)
+        output = self.preview.process_event(event, hold_for_read=hold_for_read)
         self.events.append({"type": "perception", "input": event, "output": output, "timing": timing,
                             "rgb_sha256": digest})
         advice = output["advice"]
         if self.preview.halted:
             return self.stop(advice["reason"])
+        if output.get("verification_hold"):
+            # The preview permits this only without an outstanding human action.
+            return self._result("STOP_AND_READ", advice["reason"], preview=output, timing=timing)
         if advice["reason"] == "awaiting_human_feedback":
             return self._result("WAIT_EXECUTION", advice["reason"], preview=output, timing=timing)
         if advice["action"] == "STOP_REOBSERVE":

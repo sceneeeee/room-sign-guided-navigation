@@ -1,14 +1,20 @@
 # 基于门牌与指示牌的室内导航（Room & Sign-Guided Indoor Navigation）
 
-[English](README.md) · **项目进度（2026-11-10）：M3.2 录像门接近建议已实现并测试；M3.3 手机实时验收尚未完成**
+[English](README.md) · **项目进度（2026-11-20）· M4 软件闭环已通过合成回放，具备静态设备预检条件。手持实地验收待开展。**
 
 当前 M1 复核边界：21 条人工复核实例记录、20 个关键帧，其中 18 帧完整、2 帧不完整，覆盖 4 个实体门（LSS101、LSS124、LSS118、LSS119）。既有三门人工关联 M1 回放包含 3 条 Observation（LSS101、LSS124、LSS119）；LSS118 尚未写入该历史回放。新增 detector 视频证据在下文单独汇报。可用 `python3 scripts/validate_m1_review.py` 复核并导出检测评测清单。
+
+## M4 工程入口
+
+该功能分支已串联 RGB 检测与跟踪、当前门牌区域 OCR、M2 地标记忆、多轮人工反馈接近和 M4 多门搜索会话。可按[队友交接与实时运行步骤](docs/m4-handoff.md)启动 Gradio 或回放录像。另见[架构与接口审计](docs/m4-architecture.md)、[整回合评估协议和结果](docs/m4-evaluation.md)及[多门 Isaac Sim 走廊](examples/isaac_multidoor/README.md)。
+
+合成回归覆盖丢锁后重选、重访、OCR 冲突及独立确认。三组 Isaac 回合到达帧数上限且无独立读号员，经独立确认的寻房成功率记为 N/A。真实录像入口与 Gradio 虚拟摄像头链路已做冒烟验证。[实机预检](docs/m4-field-preflight.md)记录现场准入条件，[开源参考](docs/open-source-references.md)给出 OCR 和跟踪对照协议。
 
 ## 研究目标与边界
 
 当目标房间（如 `EB104`）的位置未知时，系统利用**已经观察到的门牌、方向指示牌和少量走廊拓扑标注**，判断下一处应该去哪里观察，并逐步寻找目标。核心研究问题是：能否比逐门检查更高效地搜索未知房间？
 
-第一阶段采用**RGB 摄像头 + 人在回路（human-in-the-loop）**：人手持手机或 USB 摄像头移动，MacBook 提供交互并通过 SSH 连接远程 OCR；计划由感知模块记录实体门牌，再由规则或文本 LLM 提出下一步观察建议，由人执行。**完整的感知—推理—行动闭环尚未集成。** 当前手持实现不使用 Frogbot、深度、LiDAR、SLAM 或 Nav2；未来机器人运动执行阶段计划接入 LiDAR SLAM/Nav2，但不以它们驱动房号搜索决策。
+第一阶段采用**RGB 摄像头 + 人在回路（human-in-the-loop）**：人手持手机或 USB 摄像头移动，MacBook 提供交互并通过 SSH 连接远程 OCR；计划由感知模块记录实体门牌，再由规则或文本 LLM 提出下一步观察建议，由人执行。M4 已在合成回放中覆盖完整感知、推理和行动反馈流程，并提供有人监督的浏览器界面。联合手持现场验收仍待开展。 当前手持实现不使用 Frogbot、深度、LiDAR、SLAM 或 Nav2；未来机器人运动执行阶段计划接入 LiDAR SLAM/Nav2，但不以它们驱动房号搜索决策。
 
 ## 研究路线更新（2026-10-23）：RGB 主导的门牌地标闭环寻房
 

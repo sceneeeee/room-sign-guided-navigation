@@ -2,6 +2,7 @@
 from dataclasses import asdict
 from math import ceil, floor
 from pathlib import Path
+from time import perf_counter
 
 from .m1_review import detection_manifest, read_review
 from .ocr import read_roi
@@ -106,8 +107,9 @@ class DetectorSource:
         pass
 
 
-def perceive_frame(frame, source, *, ocr=read_roi):
+def perceive_frame(frame, source, *, ocr=read_roi, timing=None):
     """Emit replay input without copying pixels, GT labels or historical OCR."""
+    started = perf_counter()
     error = None
     try:
         proposals = source.proposals(frame)
@@ -116,6 +118,8 @@ def perceive_frame(frame, source, *, ocr=read_roi):
             raise
         error = type(exc).__name__
         proposals = [], [], None
+    if timing is not None:
+        timing.update(detector_s=perf_counter() - started, ocr_s=0.0)
     if proposals is None:
         return None
     detections, manual_links, review_id = proposals
@@ -129,6 +133,7 @@ def perceive_frame(frame, source, *, ocr=read_roi):
         x1, y1, x2, y2 = detection.bbox_xyxy_norm
         crop = frame.rgb[floor(y1 * height):ceil(y2 * height),
                          floor(x1 * width):ceil(x2 * width)]
+        started = perf_counter()
         try:
             values = ocr(crop)
             readings.append({"sign_index": i, "readings": [asdict(r) for r in values],
@@ -138,6 +143,9 @@ def perceive_frame(frame, source, *, ocr=read_roi):
             # paths or nondeterministic library details.
             readings.append({"sign_index": i, "readings": [],
                              "error": type(exc).__name__})
+        finally:
+            if timing is not None:
+                timing["ocr_s"] += perf_counter() - started
     return {"type": "frame", "frame": frame.stamp.to_dict(), "perception_error": error,
             "mode": source.mode, "detections": [asdict(d) for d in detections],
             "manual_links": manual_links, "review_frame_id": review_id, "ocr": readings}

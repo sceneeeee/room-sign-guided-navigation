@@ -1,0 +1,15 @@
+{
+  "schema": "roomnav-m4-fixture-1",
+  "target": "LSS119",
+  "frame_budget": 140,
+  "doors": [
+    {"handle":"A", "overview":"LSS101", "reads":["LSS101","LSS101"], "wall":false},
+    {"handle":"B", "overview":"LSS124", "reads":["LSS124","LSS125","LSS124"], "wall":true},
+    {"handle":"C", "overview":"LSS118", "reads":[null,"LSS118","LSS118"], "wall":false},
+    {"handle":"D", "overview":"LSS119", "reads":["LSS119","LSS119"], "wall":false}
+  ],
+  "scripted_visits":["A","B","C","A","D"],
+  "lose_first_approach":["D"],
+  "operator_cards":{"D":"LSS119"},
+  "evaluator":{"room_labels":{"A":"LSS101","B":"LSS124","C":"LSS118","D":"LSS119"}}
+}

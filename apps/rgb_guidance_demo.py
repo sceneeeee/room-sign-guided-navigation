@@ -15,7 +15,7 @@ from uuid import uuid4
 
 import gradio as gr
 
-from roomnav.rgb_perception import YOLOWorldDetector
+from roomnav.rgb_perception import YOLOWorldDetector, annotate_frame
 from roomnav.visual_tracking import ConservativeTracker
 from roomnav.visual_guidance import GuidanceDecision, VisualCandidate, VisualGuidanceController
 from roomnav.live_approach import LiveDoorApproachSession
@@ -39,26 +39,6 @@ class GuidanceSession:
 def detector():
     # No model download until the app actually receives a frame.
     return YOLOWorldDetector(weights="yolov8s-world.pt", confidence=0.30)
-
-
-def annotate_frame(frame, candidates, selected):
-    """Render transient track IDs; these are NOT physical landmark IDs."""
-    import numpy as np
-    from PIL import Image, ImageDraw
-
-    annotated = Image.fromarray(np.asarray(frame).astype("uint8")).convert("RGB")
-    drawer = ImageDraw.Draw(annotated)
-    width, height = annotated.size
-    for candidate in candidates:
-        box = candidate.bbox_xyxy_norm
-        rect = (round(box[0]*width), round(box[1]*height),
-                round(box[2]*width), round(box[3]*height))
-        active = candidate.track_id == selected
-        color = "#f24a4a" if active else "#3386d0"
-        drawer.rectangle(rect, outline=color, width=4 if active else 2)
-        tag = f"{candidate.track_id} / {candidate.category}" + (" [selected]" if active else "")
-        drawer.text((rect[0] + 4, max(0, rect[1] - 15)), tag, fill=color)
-    return np.asarray(annotated)
 
 
 ACTION_ZH = {
