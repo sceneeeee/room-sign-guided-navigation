@@ -129,11 +129,23 @@ class OpenAICompatibleModel:
         if not isinstance(system_prompt, str) or not isinstance(user_prompt, str):
             raise TypeError("Both prompts must be strings")
 
+        return self._complete(system_prompt, user_prompt, timeout_s)
+
+    def generate_with_image(self, *, system_prompt, user_prompt, timeout_s, jpeg_data_url):
+        """Explicit multimodal transport for one current, locally encoded frame."""
+        if not jpeg_data_url.startswith("data:image/jpeg;base64,"):
+            raise ValueError("A local JPEG data URL is required")
+        return self._complete(system_prompt, [
+            {"type": "text", "text": user_prompt},
+            {"type": "image_url", "image_url": {"url": jpeg_data_url}},
+        ], timeout_s)
+
+    def _complete(self, system_prompt, user_content, timeout_s):
         payload: dict[str, Any] = {
             "model": self.model,
             "messages": [
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
+                {"role": "user", "content": user_content},
             ],
             "stream": False,
             "temperature": self.temperature,

@@ -22,6 +22,7 @@ dist/
 /outputs/
 /logs/
 /checkpoints/
+/mobileclip_blt.ts
 *.onnx
 *.pt
 *.pth

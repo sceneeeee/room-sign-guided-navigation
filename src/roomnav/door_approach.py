@@ -12,10 +12,11 @@ from math import hypot, isfinite
 
 from .baseline import parse_room_number
 from .inspection import propose_inspection
+from .plate_geometry import possible_owners
 from .ocr import OCRReading
 from .offline_video import FrameStamp
 from .rgb_perception import Detection, box_iou
-from .sign_evidence import room_source_context
+from .sign_evidence import multi_door_context, room_source_context
 from .visual_guidance import MIN_DETECTOR_SCORE, camera_relative_advice
 from .visual_tracking import ConservativeTracker
 
@@ -56,7 +57,7 @@ def _geometry_change(previous, target):
                         or not .55 < height_ratio < 1.8}
 
 
-def _plate_evidence(target, candidates, regions, image_size):
+def _plate_evidence(target, candidates, regions, image_size, *, wall_plates=False):
     """Conservative current-frame containment, with competing doors included.
 
     Low-scoring competing boxes also make containment ambiguous. Do not use
@@ -69,16 +70,14 @@ def _plate_evidence(target, candidates, regions, image_size):
         if sign.category != "sign":
             continue
         sx1, sy1, sx2, sy2 = sign.bbox_xyxy_norm
-        owners = [c for c in candidates if c.category == "door"
-                  and c.bbox_xyxy_norm[0] <= sx1 and sx2 <= c.bbox_xyxy_norm[2]
-                  and c.bbox_xyxy_norm[1] <= sy1 and sy2 <= c.bbox_xyxy_norm[3]]
-        if target not in owners:
+        owners = dict(possible_owners(sign, candidates, wall_plates=wall_plates))
+        if target.track_id not in owners:
             continue
         region = regions[i]
         readings = [OCRReading(**r) for r in region["readings"]]
         labels = {parse_room_number(r.raw_text) for r in readings}
         labels.discard(None)
-        context = room_source_context(readings)
+        context = multi_door_context(readings) if wall_plates else room_source_context(readings)
         quality = (sign.score is not None and sign.score >= MIN_DETECTOR_SCORE
                    and .01 <= sx2 - sx1 <= .35 and .008 <= sy2 - sy1 <= .35
                    and sx1 > .005 and sx2 < .995 and sy1 > .005 and sy2 < .995)
@@ -86,7 +85,7 @@ def _plate_evidence(target, candidates, regions, image_size):
                     and any(parse_room_number(r.raw_text) is not None
                             and r.confidence is not None and r.confidence >= .8 for r in readings))
         links.append({"sign_index": i, "sign_track_id": sign.track_id,
-                      "source": "current_frame_containment_hypothesis",
+                      "source": f"current_frame_{owners[target.track_id]}_hypothesis",
                       "association_verified": False,
                       "ambiguous": len(owners) != 1 or len(labels) > 1,
                       "context": context, "quality": quality,
@@ -115,7 +114,9 @@ class DoorApproachPreview:
     never bypassing quality checks. One forward hint per track/session is the
     maximum; later prerecorded frames cannot replenish that budget.
     """
-    def __init__(self, header):
+    def __init__(self, header, *, multi_door=False):
+        self.multi_door = multi_door
+        self.auto_select = True
         self.advisory = header.get("schema") == ADVISORY_SCHEMA
         if (header.get("type") != "start" or header.get("schema") not in (SCHEMA, ADVISORY_SCHEMA)
                 or header.get("mode") != "detector"
@@ -145,9 +146,10 @@ class DoorApproachPreview:
         self._visual_confirmation = None
         self._motion_advice_enabled = True
 
-    def process_event(self, event):
+    def process_event(self, event, *, hold_for_read=None):
+        """Check the frame and resolve any read hold before spending a motion hint."""
         try:
-            result = self._process_event(event)
+            result = self._process_event(event, hold_for_read=hold_for_read)
             return json.loads(json.dumps(result, allow_nan=False))
         except (KeyError, TypeError, ValueError):
             self._halt("invalid_input")
@@ -162,6 +164,20 @@ class DoorApproachPreview:
     def halt(self, reason="operator_stop"):
         """Latch a safety stop from an enclosing session; never acknowledge motion."""
         self._halt(reason)
+
+    def rearm_after_completed_forward(self, track_id):
+        """Only the feedback owner may replenish one hint, after checking its cap."""
+        if self.multi_door and not self.halted and self.target_track_id == track_id:
+            self._forward_hinted.discard(track_id)
+            self._centered_streak.clear()
+            self._sign_streak.clear()
+
+    def can_confirm_visual_target(self):
+        return not self.halted and any(c.track_id == self.target_track_id and _eligible(c) for c in self.visible)
+
+    @property
+    def visual_confirmation(self):
+        return deepcopy(self._visual_confirmation)
 
     def _source_reviewed(self, evidence):
         return (self._review is not None and self._review["status"] == "door_and_plate"
@@ -193,7 +209,7 @@ class DoorApproachPreview:
                 else "_manual_track" if self.selection_source == "manual" else "_automatic")
         return result
 
-    def _process_event(self, event):
+    def _process_event(self, event, *, hold_for_read=None):
         if not isinstance(event, dict):
             raise ValueError("Expected preview event object")
         kind = event.get("type")
@@ -202,7 +218,7 @@ class DoorApproachPreview:
                     or not isinstance(event["confirmed_by"], str) or not event["confirmed_by"].strip()
                     or self.halted or self.stamp is None or event["frame_id"] != self.stamp.frame_id
                     or event["track_id"] != self.target_track_id
-                    or not any(c.track_id == event["track_id"] and _eligible(c) for c in self.visible)):
+                    or not self.can_confirm_visual_target()):
                 raise ValueError("Visual confirmation requires the current selected eligible door")
             self._visual_confirmation = deepcopy(event)
             return {"visual_target_confirmation": deepcopy(event), "motion_authorized": False,
@@ -304,14 +320,30 @@ class DoorApproachPreview:
                                 and .85 <= change["height_ratio"] <= 1.15)
                 if camera_relative_advice(c)[0] == "FORWARD_SHORT":
                     centered[c.track_id] = self._centered_streak.get(c.track_id, 0) + 1 if small_change else 1
-                _, links = _plate_evidence(c, self.visible, regions, self.header["image_size"])
+                _, links = _plate_evidence(c, self.visible, regions, self.header["image_size"], wall_plates=self.multi_door)
                 if len(links) == 1 and links[0]["quality"] and not links[0]["ambiguous"] and links[0]["context"] == "unverified":
                     key = (c.track_id, links[0]["sign_track_id"])
                     signs[key] = self._sign_streak.get(key, 0) + 1
             self._centered_streak, self._sign_streak = centered, signs
         result = self._advise(stamp, eligible, contenders, regions, error, gap, previous_tracks)
-        return {"tracks": [asdict(c) for c in self.visible], "advice": result,
-                "diagnostics": self._diagnostics(regions, previous_tracks, eligible, contenders, result)}
+        read_held = (hold_for_read is not None and not self.halted
+                     and self._motion_advice_enabled and hold_for_read())
+        overridden = read_held and result["action"] != "STOP_AND_READ"
+        if overridden:
+            result = self._decision(stamp, "STOP_AND_READ", "Await independent room confirmation",
+                                    evidence=result["plate_evidence"], state="READ_OPPORTUNITY")
+        if result["action"] == "FORWARD_SHORT":
+            self._forward_hinted.add(result["track_id"])
+        output = {"tracks": [asdict(c) for c in self.visible], "advice": result,
+                  "diagnostics": self._diagnostics(regions, previous_tracks, eligible, contenders, result)}
+        if overridden:
+            blockers = output["diagnostics"]["action_blockers"]
+            for action in ("TURN_LEFT", "TURN_RIGHT", "FORWARD_SHORT"):
+                blockers[action].insert(0, "awaiting_independent_room_confirmation")
+            blockers["STOP_AND_READ"] = []
+        if read_held:
+            output["verification_hold"] = True
+        return output
 
     def _validate_review(self, review, stamp):
         if review is None:
@@ -344,6 +376,8 @@ class DoorApproachPreview:
             if self._review["status"] == "uncertain":
                 return stop("review_source_uncertain")
         if self.target_track_id is None:
+            if not self.auto_select:
+                return stop("explicit_selection_required")
             if len(contenders) > 1:
                 return stop("ambiguous_visible_doors")
             proposal = propose_inspection(stamp.frame_id, stamp.timestamp_s, eligible, now_s=stamp.timestamp_s)
@@ -365,7 +399,7 @@ class DoorApproachPreview:
             return stop("selected_door_low_confidence_small_or_edge")
         if self.selection_source == "automatic" and (len(eligible) != 1 or len(contenders) != 1):
             return stop("ambiguous_visible_doors")
-        plate, evidence = _plate_evidence(target, self.visible, regions, self.header["image_size"])
+        plate, evidence = _plate_evidence(target, self.visible, regions, self.header["image_size"], wall_plates=self.multi_door)
         if plate in (("ambiguous_door_sign_or_ocr", "non_room_sign_context") if self.advisory else
                      ("ambiguous_door_sign_or_ocr", "non_room_sign_context", "associated_plate_ocr_failed")):
             return stop(plate, evidence=evidence)
@@ -374,6 +408,10 @@ class DoorApproachPreview:
                 return stop("awaiting_human_feedback")
             action, reason = camera_relative_advice(target)
             if action in ("TURN_LEFT", "TURN_RIGHT"):
+                if self.multi_door and (len(contenders) != 1 or not previous or not _eligible(previous)
+                        or change["center_displacement"] > .04
+                        or not .85 <= change["width_ratio"] <= 1.15 or not .85 <= change["height_ratio"] <= 1.15):
+                    return stop("turn_requires_stable_unambiguous_geometry")
                 return self._decision(stamp, action, reason, evidence=evidence, state="ALIGNING")
             gates = self._advisory_gates(target, evidence, regions, contenders)
             if not gates["STOP_AND_READ"]:
@@ -381,7 +419,6 @@ class DoorApproachPreview:
                                       evidence=evidence, state="READ_OPPORTUNITY")
             if gates["FORWARD_SHORT"]:
                 return stop(gates["FORWARD_SHORT"][0], evidence=evidence, state="ALIGN")
-            self._forward_hinted.add(target.track_id)
             return self._decision(stamp, "FORWARD_SHORT", "Stable centered observation target; one human-judged hint, no path or distance inference",
                                   evidence=evidence, state="ALIGN")
         action, reason = camera_relative_advice(replace(target, readable=plate == "readable"))
@@ -396,7 +433,6 @@ class DoorApproachPreview:
                 return stop("centered_but_door_clipped", evidence=evidence, state="ALIGN")
             if target.track_id in self._forward_hinted:
                 return stop("forward_preview_budget_exhausted_no_execution_evidence", evidence=evidence, state="ALIGN")
-            self._forward_hinted.add(target.track_id)
             reason = "Aligned; one human-judged short-step hint only; no distance or path clearance inferred"
         return self._decision(stamp, action, reason, evidence=evidence,
                               state="ALIGN" if action == "FORWARD_SHORT" else
@@ -447,7 +483,7 @@ class DoorApproachPreview:
             if c.category != "door":
                 continue
             x1, y1, x2, y2 = c.bbox_xyxy_norm
-            candidate_plate, candidate_links = _plate_evidence(c, self.visible, regions, self.header["image_size"])
+            candidate_plate, candidate_links = _plate_evidence(c, self.visible, regions, self.header["image_size"], wall_plates=self.multi_door)
             doors.append({"detection_index": index, "track_id": c.track_id,
                           "bbox_xyxy_norm": c.bbox_xyxy_norm, "score": c.score,
                           "center_x": c.center_x, "center_y": (y1+y2)/2,
@@ -456,7 +492,7 @@ class DoorApproachPreview:
                           "plate_status": candidate_plate, "plate_links": candidate_links,
                           "change": _geometry_change(previous_tracks.get(c.track_id), c)})
         target = next((c for c in self.visible if c.track_id == self.target_track_id), None)
-        plate, links = (_plate_evidence(target, self.visible, regions, self.header["image_size"])
+        plate, links = (_plate_evidence(target, self.visible, regions, self.header["image_size"], wall_plates=self.multi_door)
                         if target else ("no_visible_selected_door", []))
         common = []
         if self.halted:

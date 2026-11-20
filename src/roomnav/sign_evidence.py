@@ -33,3 +33,9 @@ def room_source_context(readings, *, policy: str = CONTEXT_POLICY) -> str:
             or "academic literacies" in combined or "scientific writing" in combined):
         return "poster"
     return "unverified"
+
+
+def multi_door_context(readings):
+    if any(marker in r.raw_text for r in readings for marker in ("←", "→", "->", "<-")):
+        return "directional_sign"
+    return room_source_context(readings)

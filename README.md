@@ -1,16 +1,22 @@
 # Room & Sign-Guided Indoor Navigation
 
-[中文说明](README.zh-CN.md) · **Project status (2026-11-10): M3.2 recorded-video door advice implemented and tested; live M3.3 acceptance is pending**
+[中文说明](README.zh-CN.md) · **Project status (2026-11-20) · M4 software integration verified in synthetic replay. Static device preflight is ready. Supervised handheld search is pending.**
 
 Current M1 review boundary: 21 human-reviewed instance records across 20 keyframes, with 18 complete frames and 2 incomplete frames, covering 4 physical doors (LSS101, LSS124, LSS118, LSS119). The earlier manually associated M1 replay contains 3 observations (LSS101, LSS124, LSS119); LSS118 is present in the review data but has not been added to that historical replay. New detector-video evidence is reported separately below. Run `python3 scripts/validate_m1_review.py` to validate the review and export a detector-evaluation manifest.
 
 An **RGB-first, human-in-the-loop** research testbed for reading room numbers and signage and deciding where to look next when the target room's location is unknown.
 
+## M4 engineering entry points
+
+The feature branch connects RGB detector/tracker and ROI OCR, incremental M2 landmark memory, repeated human-gated M3 approach and one M4 multi-door session. Start with the [live and replay handoff](docs/m4-handoff.md), [architecture and API audit](docs/m4-architecture.md), [episode protocol and results](docs/m4-evaluation.md) and [Isaac Sim corridor](examples/isaac_multidoor/README.md).
+
+The deterministic regression reaches independent fixture confirmation after a loss and a revisit. Three rendered Isaac runs reached their frame budget without independent readers. Verified search success is N/A for those runs. Real-video ingress and the Gradio virtual-camera path have smoke coverage. Use the [field preflight](docs/m4-field-preflight.md) for the intended phone or Camo setup and the [reference review](docs/open-source-references.md) for prospective OCR and tracking comparisons.
+
 ## Research question and scope
 
 Can an agent use **observed** room labels, directional signs and lightweight corridor annotations to search more efficiently than checking doors one by one?
 
-A person carries a phone/USB RGB camera and follows high-level observation suggestions. The intended workflow is camera → OCR → physical door association → landmark memory → rule/text-LLM suggestion → human observation. **This full workflow has not yet been integrated or field-validated.** Robot hardware, depth, LiDAR, SLAM and Nav2 are outside this **current handheld implementation**, but robot motion integration is planned in later stages.
+A person carries a phone/USB RGB camera and follows high-level observation suggestions. The intended workflow is camera → OCR → physical door association → landmark memory → rule/text-LLM suggestion → human observation. M4 implements the complete workflow for synthetic replay and provides a supervised browser interface. The jointly supervised handheld workflow awaits field validation. Robot hardware, depth, LiDAR, SLAM and Nav2 are outside this **current handheld implementation**, but robot motion integration is planned in later stages.
 
 ## Updated direction (2026-10-23) — RGB-driven, landmark-guided closed-loop room search
 
