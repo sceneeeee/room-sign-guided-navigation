@@ -1,6 +1,6 @@
 # Room & Sign-Guided Indoor Navigation
 
-[中文说明](README.zh-CN.md) · **Project status (2026-11-20) · M4 software integration verified in synthetic replay. Static device preflight is ready. Supervised handheld search is pending.**
+[中文说明](README.zh-CN.md) · **Project status (2026-11-20): M2–M4 software integrated on `main`; supervised multi-door search validated in deterministic replay and controlled rendered-RGB tests. Real handheld search has not yet passed field acceptance.**
 
 Current M1 review boundary: 21 human-reviewed instance records across 20 keyframes, with 18 complete frames and 2 incomplete frames, covering 4 physical doors (LSS101, LSS124, LSS118, LSS119). The earlier manually associated M1 replay contains 3 observations (LSS101, LSS124, LSS119); LSS118 is present in the review data but has not been added to that historical replay. New detector-video evidence is reported separately below. Run `python3 scripts/validate_m1_review.py` to validate the review and export a detector-evaluation manifest.
 
@@ -8,9 +8,9 @@ An **RGB-first, human-in-the-loop** research testbed for reading room numbers an
 
 ## M4 engineering entry points
 
-The feature branch connects RGB detector/tracker and ROI OCR, incremental M2 landmark memory, repeated human-gated M3 approach and one M4 multi-door session. Start with the [live and replay handoff](docs/m4-handoff.md), [architecture and API audit](docs/m4-architecture.md), [episode protocol and results](docs/m4-evaluation.md) and [Isaac Sim corridor](examples/isaac_multidoor/README.md).
+Merged [PR #12](https://github.com/sceneeeee/room-sign-guided-navigation/pull/12) connects current-frame RGB detector/tracker and ROI OCR (M1), evidence-aware `LandmarkMemory` and Rule/text-Qwen planning (M2), bounded visual approach advice and human feedback (M3), and one supervised multi-door search session (M4). The [Gradio entry point](apps/multidoor_search.py), [architecture/API audit](docs/m4-architecture.md), [evaluation protocol and results](docs/m4-evaluation.md), [live/replay handoff](docs/m4-handoff.md) and [Isaac Sim multi-door corridor](examples/isaac_multidoor/README.md) are available on `main`. No physical actuator is commanded.
 
-The deterministic regression reaches independent fixture confirmation after a loss and a revisit. Three rendered Isaac runs reached their frame budget without independent readers. Verified search success is N/A for those runs. Real-video ingress and the Gradio virtual-camera path have smoke coverage. Use the [field preflight](docs/m4-field-preflight.md) for the intended phone or Camo setup and the [reference review](docs/open-source-references.md) for prospective OCR and tracking comparisons.
+**Engineering verification:** [PR #12](https://github.com/sceneeeee/room-sign-guided-navigation/pull/12) reports **442/442 local unit tests**, including **11/11 live-UI regressions**, and **37 historical M4 logs** passing strict replay. A deterministic fixture reaches `FOUND` only after an explicit independent reader event. Three saved **64-frame Isaac Sim multi-door runs** were rescored; they terminated at the frame budget with **no independent reader**, so verified search success and wrong-`FOUND` metrics are **N/A**, not zero or a success rate. Virtual-webcam Gradio, prerecorded corridor RGB ingress, STOP/timeouts and feedback were smoke-tested; real phone/Camo preflight, end-to-end latency and human-followed multi-door trials remain pending. See [field preflight](docs/m4-field-preflight.md) and [reference review](docs/open-source-references.md).
 
 ## Research question and scope
 
@@ -20,7 +20,7 @@ A person carries a phone/USB RGB camera and follows high-level observation sugge
 
 ## Updated direction (2026-10-23) — RGB-driven, landmark-guided closed-loop room search
 
-**Planning update, not a claim of implementation.** The research target is an unfamiliar indoor floor, a requested room identifier (e.g., FB545), and a **single RGB camera as the search/perception input**. The system should autonomously identify candidate doors and signage, guide an observer toward a selected door, read its plate, update an evidence-aware landmark memory, and choose where to look next. The search policy must not rely on pre-annotated room locations, RGB-D, depth input, or SLAM pose/map information.
+**Research design (partially implemented as M4 software, not yet accepted in the field):** The target is an unfamiliar indoor floor, a requested room identifier (e.g., FB545), and a **single RGB camera as the search/perception input**. The software now supports supervised door selection, bounded visual advice and feedback, evidence-memory updates, and independent goal confirmation in synthetic replay; reliably performing that workflow with a person or a robot in an unfamiliar corridor still requires validation. The search policy must not rely on pre-annotated room locations, RGB-D, depth input or SLAM pose/map information.
 
 **Two execution stages:** (1) a person holds the RGB camera and follows bounded visual movement/observation prompts, handling collision avoidance and safety; (2) the same high-level RGB perception/reasoning stack is adapted to a robot, with LiDAR SLAM, odometry, Nav2, and obstacle avoidance **only as motion-execution infrastructure**. Human compliance and robot integration are **not yet demonstrated**; actuator substitution is a design objective requiring its own validation. Camera-relative image guidance is **not** a metric map pose or proof of a collision-free route.
 
@@ -28,7 +28,7 @@ A person carries a phone/USB RGB camera and follows high-level observation sugge
 
 **M1 → M2.4 field replay (2026-11-07, merged via PR #4):** The three published manually associated observations `LSS101 → LSS124 → LSS119` now replay through `M1Session` / `StreamSession` and the existing JSONL CLI, without map lookup. For target LSS119 the actions are `INSUFFICIENT_EVIDENCE → INSUFFICIENT_EVIDENCE → REOBSERVE`; there is no operator confirmation or FOUND. All timestamps remain `0.0` placeholders. [Replay commands, evidence checks and pending real-map dependency](docs/m1-m2-offline-adapter.md). This does not establish live closed-loop search success.
 
-### Target architecture (future, not current code)
+### Architecture: implemented M4 software and future robot execution
 
 ~~~text
 RGB video (phone now; robot camera later)
@@ -44,9 +44,9 @@ RGB video (phone now; robot camera later)
 
 **Design separation:** the detector proposes visible doors (including unread doors); the OCR supplies *raw text evidence*; memory tracks distinct physical entities and conflicts; the planner selects a visible/observed target or requests more viewing; the local guidance skill issues short, revisable, camera-relative actions. A generic VLM is **not** assumed to replace the detector, tracker, OCR, or local safety controller. Plain pretrained COCO YOLO weights do not provide a standard door class; evaluate an open-vocabulary detector or door-trained weights and fine-tune only if needed. Initial VLM use is for keyframes/events (e.g., a new door, junction, ambiguous sign), not for every camera frame.
 
-**Interface change required:** existing M2.4 Observation events are limited to nonempty room/sign text and do not accept bounding boxes or unlabelled-door tracks. Add a separate visual-candidate/track event stream containing frame provenance, normalized box, short-lived track ID and optional associated physical landmark ID; emit the existing strict Observation event **only after actual OCR evidence and justified association**. Do not convert a track ID into a permanent landmark ID without evidence. Retain independent operator confirmation for current FOUND semantics; a future automated goal claim requires an independently evaluated protocol.
+**Current interface (implemented via PR #12):** M2.4 `Observation` still requires genuine OCR text, while `CandidateEvent` separately preserves current-frame detector/sign proposals, provenance, boxes, short-lived tracks and association evidence. The supervised operator explicitly binds a visible plate to a physical door; temporary tracks must never be silently promoted to permanent physical identities. M2 only receives an eligible complete OCR reading after justified association. `FOUND` requires two distinct eligible captures plus a separate independent operator reading; a future automated goal claim requires its own independently evaluated protocol. See [M4 architecture](docs/m4-architecture.md).
 
-### Revised milestones and acceptance criteria
+### Roadmap and remaining field acceptance criteria
 
 | Stage | Planned extension | Acceptance / evidence |
 | --- | --- | --- |
@@ -58,7 +58,7 @@ RGB video (phone now; robot camera later)
 | **M5 (later)** | Robust unknown corridors, junctions, signs, numbering anomalies, revisits and failure recovery | Held-out floor/corridor trials without advance semantic-map labels or operator-selected search directions |
 | **M6–M7 (later)** | Robot execution adapter, single-door then multi-door/branch closed loop; integrate LiDAR SLAM + Nav2 for safe motion | RGB still selects/reads semantic targets; robot executes safely; evaluate domain shift and intervention rate separately |
 
-**Order of implementation:** finish the original **M1 -> M2.4 real-observation replay** first; demonstrate a single door **detect -> track -> visually align -> approach in short safe steps -> read -> update**; then connect multi-door planning and run VLM comparisons. M0 and M2 histories are preserved rather than renamed as finished visual-navigation work.
+**Next acceptance steps (after PR #12):** Run the [phone/Camo static field preflight](docs/m4-field-preflight.md), verify actual frame freshness, latency, safety controls, manual physical-door binding and independent reading; then conduct short supervised multi-door episodes with independent ground truth and retained failures. Evaluate Sequential/Rule/text Qwen and paired VLM variants only under a controlled protocol with actual model backends; VLM request-schema tests alone are not a deployed VLM comparison. Robot motion integration remains later work. The original M0/M2 experiment history is retained without presenting it as completed field navigation.
 
 ### Closest prior work and limits of direct reuse
 
@@ -74,11 +74,11 @@ RGB video (phone now; robot camera later)
 
 **Literature boundary:** prior art clearly covers numbered-room navigation, signs and RGB-only control. The surveyed work does not supply a single verified ready-to-reproduce solution matching **all** of: live RGB door/sign discovery, unknown-building room-number reasoning, closed-loop door approach, no pre-annotated semantic map for search, and a replaceable human/robot execution adapter. This is a scoped literature finding, **not a claim of novelty**; eventual research contribution depends on measurable improvements against fair baselines.
 
-## Development snapshot — 2026-11-09
+## Historical development snapshot — 2026-11-09 (superseded by the current M4 status)
 
-**Branch boundaries matter:**
+**Archived status only:** The following observations describe the earlier 2026-11-09 development state, before PR #9, #10 and #12. They are kept as a reproducible historical record, **not** as the present `main` status.
 
-- **`main` (current baseline):** includes the M0 browser/Gradio/RapidOCR pipeline with timed capture, local frame/OCR logs, manual review and CSV/keyframe export **merged via PR #1**. New samples are saved as lossless PNG; the original 2026-10-18 field frames remain JPEG. PR #4 also merged M2.4 streaming, M1 ingestion and bounded M3 prototypes; PR #6 merged M1 review validation/export. Live room-finding acceptance remains pending.
+- **`main` as of 2026-11-09:** included the M0 browser/Gradio/RapidOCR pipeline and review/export via PR #1, M2.4/M1 ingestion/M3 prototype via PR #4, and M1 review validation via PR #6. Later PRs #9, #10 and #12 superseded this snapshot; field acceptance is still pending.
 - **[PR #1 — M0 field capture and results](https://github.com/sceneeeee/room-sign-guided-navigation/pull/1):** **merged into `main` on 2026-10-20** (merge commit [`c247107`](https://github.com/sceneeeee/room-sign-guided-navigation/commit/c2471077cba6be5b393ffd4fb905c9e46d26f672)). Its review corrections fixed the LSS101 exact-match denominator, switched future frame storage to PNG, and pinned/tested Gradio 6.30.0 for the capture UI.
 - **[`feat/m2-reasoning`](https://github.com/sceneeeee/room-sign-guided-navigation/tree/feat/m2-reasoning):** includes M2.1–M2.4 (M2.4 implementation commit `65c7e26`), **now integrated into `main` via PR #4**. Historical M2 evaluation reports still describe the original experiments.
 
@@ -88,7 +88,7 @@ RGB video (phone now; robot camera later)
 - **M1 — partial:** strict room-label ingestion, capture IDs, deduplication and reviewed keyframe export are integrated; real-video automatic detection/physical association acceptance remains pending. Initial experiments may use manual association; equal OCR text does not prove the same physical door.
 - **M2 — implemented and merged via PR #4:** M2.1 evidence-aware `LandmarkMemory`; M2.2 Rule baseline; M2.3a constrained text-LLM decisions and safety fallback; M2.3b local Ollama/Qwen3-4B; M2.3c frozen 20-scenario evaluator; M2.3d selectable Prompt v2/v3 (**v2 remains the default**, v3 strategy performance is mixed); M2.4 JSONL/stdin streaming events, incremental Rule decisions and the repeated-frame eligibility fix. **194 unit tests passed locally in WSL**. The FB541 → FB543 → FB545 replay reaches `REOBSERVE` → `VERIFY_TARGET` → `FOUND` only after explicit operator confirmation; it is **synthetic**, not a live corridor run.
 - **Offline evaluation (historical Prompt v2):** on 20 manually authored *single-step* cases, the original Rule achieved **19/20** legal and acceptable actions; Qwen achieved **10/20** acceptable, **20/20** legal, **0** fallbacks and **17/20** abstentions. The fixed M2.4 Rule reaches **20/20** on the **same already-seen** suite; this is a bug-fix regression, **not** an independent generalization result. The 5 Prompt v3 development requests also do not establish better field navigation.
-- **M3/M4 — pending:** no real multi-door human-in-the-loop search or controlled comparisons of search success, inspected doors, time or distance. M2.4 is not yet connected to live M1 perception. A VLM is not required for the present text-OCR + Rule/text-LLM baseline and has not been deployed.
+- **M3/M4 at this historical date:** no human-followed real multi-door search or controlled comparisons were available, and M2.4 had not yet been wired into the final M4 live interface. **Since then PR #12 delivered the M4 software path and synthetic/Isaac evaluation; field success remains unverified.** VLM model evaluation is still pending.
 
 ## Original text-only baseline loop (historical; superseded by the updated target architecture above)
 
@@ -110,11 +110,26 @@ Controlled policy/field comparison            [M4; pending]
 
 The live demo **samples browser webcam frames** (nominally every 1.5 s), not a continuous 30-FPS feed. Each Record has about 5 s for camera settling and about 12 s of OCR/local saving before automatic stop. New samples are stored as lossless PNG with raw OCR and an independent manual review record; legacy 2026-10-18 JPEG samples are unchanged. The recorded Gradio UI version is pinned to **6.30.0**. OCR is **unverified evidence**, not physical door identity or navigation confirmation. `segment_id` and `side` can be operator annotated; no automatic mapping or robot motion is claimed.
 
-**M3.1 offline milestone (this feature branch):** both MP4s fully decoded (2,499 frames each), with paired 21-frame YOLOE/RapidOCR runs and 45 real continuous samples. The 1080p version yielded LSS101/LSS124/LSS119 OCR; actual guidance remained STOP_REOBSERVE. GT frame bindings, semantic door identity and live navigation remain unverified. Optional [M3.2 inspection suggestions](docs/m32-inspection-interface.md) never authorize motion: even a wall misclassified for ten frames can receive a suggestion. [Validation and limits](docs/m31-validation-summary.md) · [CLI and replay](docs/m31-offline-replay.md).
+**M3.1 offline milestone (merged via PR #7):** both MP4s fully decoded (2,499 frames each), with paired 21-frame YOLOE/RapidOCR runs and 45 real continuous samples. The 1080p version yielded LSS101/LSS124/LSS119 OCR; actual guidance remained STOP_REOBSERVE. GT frame bindings, semantic door identity and live navigation remain unverified. Optional [M3.2 inspection suggestions](docs/m32-inspection-interface.md) never authorize motion: even a wall misclassified for ten frames can receive a suggestion. [Validation and limits](docs/m31-validation-summary.md) · [CLI and replay](docs/m31-offline-replay.md).
 
 ## Quick start
 
-**M0 app on this branch** (Python 3.10+, remote inference computer):
+### M4 supervised multi-door software (`main`)
+
+Follow the [complete M4 handoff](docs/m4-handoff.md) and [field safety preflight](docs/m4-field-preflight.md). On a machine with the correct privately provisioned YOLOE checkpoint, OCR cache and FFmpeg, install the project extras, then start the supervised Gradio app:
+
+~~~bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[vision,detection,ui]'
+python apps/multidoor_search.py --weights yoloe-11s-seg.pt --device cpu
+~~~
+
+This is an **operator-supervised observation tool**, not autonomous robot control. Do not interpret synthetic fixtures, virtual camera safety checks or rendered RGB as field-validated navigation. The separate historical M0 app remains available below.
+
+### M0 capture-only app (historical)
+
+**M0 app on the original capture path** (Python 3.10+, remote inference computer):
 
 ~~~bash
 python3 -m venv .venv
@@ -141,21 +156,19 @@ python -m unittest discover -s tests -q
 
 The streaming CLI defaults to **Rule-only** and makes no automatic Ollama requests. Human confirmation must be a separate operator event. Still-image OCR is available as a diagnostic tool through `scripts/ocr_image.py` and `apps/photo_demo.py`.
 
-## Original baseline milestones and owners (development status, not revised scope)
+## Implementation status and contributions (2026-11-20)
 
-| Stage | Work | Status |
+| Stage | Delivered software/evidence | Remaining boundary |
 | --- | --- | --- |
-| **M0 — Capture/OCR** | Remote OCR, timed field capture, local PNG frames/OCR, human review and export | **Implemented on `main` via merged PR #1**; one stationary LSS101 condition field-tested (5/6 frame-level exact matches), wider validation pending |
-| **M1 — Perception** | Full room-ID extraction, stable IDs for repeated physical signs, cross-door separation | **Next for Member B**; not complete |
-| **M2 — Memory/strategy** | Rule/text-LLM, frozen evaluation, replayable JSONL observation stream | **M2.1–M2.4 merged via PR #4**; three manual field observations replay offline |
-| **M3 — Human search loop** | Connect M1 to M2.4; person executes suggested observation actions | Not integrated |
-| **M4 — Comparison** | Sequential door checking vs Rule vs text-LLM, with success/cost/failure metrics | Not started |
+| **M0 — capture/OCR** | Browser/Camo capture, RapidOCR, reproducible logs and review/export ([PR #1](https://github.com/sceneeeee/room-sign-guided-navigation/pull/1)) | Single-condition field samples do not establish general OCR performance |
+| **M1 — perception/evidence** | Reviewed room-label data and validation tooling ([PR #6](https://github.com/sceneeeee/room-sign-guided-navigation/pull/6), [#8](https://github.com/sceneeeee/room-sign-guided-navigation/pull/8)); current-frame detector/track/ROI OCR integration in M4 | Multi-door physical identity and detection accuracy still require independently reviewed field data |
+| **M2 — memory/planning** | Evidence-aware memory, Rule, constrained Qwen planner, strict observations and frozen offline comparisons ([PR #4](https://github.com/sceneeeee/room-sign-guided-navigation/pull/4)) | Historical single-step evaluation does not establish field strategy advantage |
+| **M3 — visual guidance** | Prerecorded RGB replay, bounded door approach, human-gated live interaction ([PR #7](https://github.com/sceneeeee/room-sign-guided-navigation/pull/7), [#9](https://github.com/sceneeeee/room-sign-guided-navigation/pull/9)) | Real handheld forward/stop/read sequences and latency remain unaccepted |
+| **M4 — supervised multi-door search** | Integrated multi-door state machine, browser UI, safety/feedback gates, JSONL replay, Isaac Sim multi-door episode scoring ([PR #12](https://github.com/sceneeeee/room-sign-guided-navigation/pull/12)) | Synthetic fixtures and three rendered-RGB episodes are engineering evidence, **not** independently verified real-world room search |
 
-- **Member A — reasoning/evaluation:** M2 ownership, Rule and text-Qwen comparisons, M1/M2 adapter integration, and M3/M4 experimental design.
-- **Member B — perception/field:** M0 collection and reproducible field records, followed by M1 room-label extraction, physical landmark association, live observation IDs and real-corridor tests.
-- **Joint:** agree on the Observation interface, preserve raw vs confirmed evidence, review failure cases, and run a multi-door field demonstration.
+**Contribution provenance — two-person project:** **Member A (`sceneeeee` / evenS)** developed and integrated M2–M4 software, including RGB guidance, the human-gated Gradio interface, multi-door Isaac Sim simulation, replay and evaluation. **Member B (`RtimesC`)** contributed M0 capture and field-recording tools, M1 field observations/review and annotation tooling ([PRs #1, #6, #8](https://github.com/sceneeeee/room-sign-guided-navigation/pulls?q=is%3Apr+author%3ARtimesC)), and the **constrained single-door Isaac Sim module experiment** ([PR #10](https://github.com/sceneeeee/room-sign-guided-navigation/pull/10): 33 configuration runs, 222 inference frames on repeated development scenes). Single-door experiments and Member A's later **multi-door** simulator/integration are separate contributions. Hardware robot execution and verified handheld search are not claimed.
 
-**M3.2 recorded-video advice:** the independent [Door Approaching preview](docs/m32-door-approaching.md) produces actual detector-supported left/right suggestions with explicit automatic/manual selection. The single-door revision blocks the known wall read error, retains weak competing candidates, and reports per-action gates. Real forward advice and trusted-door stop-and-read remain unverified; independent current-frame source review is required in addition to suitable footage. All advice has `motion_authorized=false`, without execution feedback or FOUND. Next: supervised M3.3 handheld integration, stronger candidate/plate checks, and trusted GT bindings. Issue #5 remains open.
+**M3.2 historical evidence:** the [Door Approaching preview](docs/m32-door-approaching.md) produced detector-backed left/right advice on prerecorded frames, with `motion_authorized=false`. The merged M4 interface adds operator feedback and emergency STOP but does not turn those prerecorded suggestions into a field-validated approach.
 
 ## References and documentation
 
