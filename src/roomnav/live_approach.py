@@ -170,8 +170,7 @@ class LiveDoorApproachSession:
             return self._result("WAIT_EXECUTION", advice["reason"], preview=output, timing=timing)
         if advice["action"] == "STOP_REOBSERVE":
             if self.controller.pending_action_id is not None:
-                return self.stop(advice["reason"])
-            self.controller.halt()
+                self.controller.revoke_pending()
             return self._result("STOP_REOBSERVE", advice["reason"], preview=output, timing=timing)
         target = next(c for c in self.candidates if c.track_id == advice["track_id"])
         if self.controller.target_track_id != target.track_id or self.controller.halted:

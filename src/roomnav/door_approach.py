@@ -118,6 +118,9 @@ class DoorApproachPreview:
         self.multi_door = multi_door
         self.auto_select = True
         self.advisory = header.get("schema") == ADVISORY_SCHEMA
+        self.handheld_mode = header.get("handheld_mode", False)
+        if type(self.handheld_mode) is not bool:
+            raise ValueError("handheld_mode must be boolean")
         if (header.get("type") != "start" or header.get("schema") not in (SCHEMA, ADVISORY_SCHEMA)
                 or header.get("mode") != "detector"
                 or header.get("evidence_origin") not in (
@@ -128,7 +131,7 @@ class DoorApproachPreview:
                 or any(type(v) is not int or v <= 0 for v in size)):
             raise ValueError("Positive image_size [width, height] required")
         self.header = deepcopy(header)
-        self.tracker = ConservativeTracker()
+        self.tracker = ConservativeTracker(max_missed_frames=2 if self.handheld_mode and multi_door else 0)
         self.visible = []
         self.stamp = None
         self.target_track_id = None
@@ -367,8 +370,11 @@ class DoorApproachPreview:
         if self.halted:
             return stop("preview_halted_start_new_session")
         if error is not None or gap:
-            self._halt("perception_error" if error else "capture_gap_or_fast_turn")
-            return stop("perception_error" if error else "capture_gap_or_fast_turn")
+            reason = "perception_error" if error else "capture_gap_or_fast_turn"
+            if self.handheld_mode:
+                return stop(reason, state="REOBSERVE")
+            self._halt(reason)
+            return stop(reason)
         if self._review:
             if self._review["status"] == "not_door":
                 self._halt("review_rejected_non_door")
@@ -388,16 +394,20 @@ class DoorApproachPreview:
             self.target_track_id, self.selection_source = proposal.track_id, "automatic"
         target = next((c for c in self.visible if c.track_id == self.target_track_id), None)
         if target is None:
+            if self.handheld_mode:
+                return stop("locked_target_temporarily_lost", state="REOBSERVE")
             self._halt("selected_track_lost_no_automatic_replacement")
             return stop("selected_track_lost_no_automatic_replacement")
         previous = previous_tracks.get(target.track_id)
         change = _geometry_change(previous, target)
         if change is not None and change["unstable"]:
+            if self.handheld_mode:
+                return stop("unstable_target_or_fast_camera_turn", state="REOBSERVE")
             self._halt("unstable_target_or_fast_camera_turn")
             return stop("unstable_target_or_fast_camera_turn")
         if not _eligible(target):
             return stop("selected_door_low_confidence_small_or_edge")
-        if self.selection_source == "automatic" and (len(eligible) != 1 or len(contenders) != 1):
+        if self.selection_source == "automatic" and not self.handheld_mode and (len(eligible) != 1 or len(contenders) != 1):
             return stop("ambiguous_visible_doors")
         plate, evidence = _plate_evidence(target, self.visible, regions, self.header["image_size"], wall_plates=self.multi_door)
         if plate in (("ambiguous_door_sign_or_ocr", "non_room_sign_context") if self.advisory else
@@ -408,12 +418,13 @@ class DoorApproachPreview:
                 return stop("awaiting_human_feedback")
             action, reason = camera_relative_advice(target)
             if action in ("TURN_LEFT", "TURN_RIGHT"):
-                if self.multi_door and (len(contenders) != 1 or not previous or not _eligible(previous)
+                if self.multi_door and (not previous or not _eligible(previous)
                         or change["center_displacement"] > .04
                         or not .85 <= change["width_ratio"] <= 1.15 or not .85 <= change["height_ratio"] <= 1.15):
                     return stop("turn_requires_stable_unambiguous_geometry")
                 return self._decision(stamp, action, reason, evidence=evidence, state="ALIGNING")
-            gates = self._advisory_gates(target, evidence, regions, contenders)
+            gates = self._advisory_gates(target, evidence, regions,
+                                         [target] if self.handheld_mode else contenders)
             if not gates["STOP_AND_READ"]:
                 return self._decision(stamp, "STOP_AND_READ", "Candidate sign ROI permits an OCR attempt; source and room remain unverified",
                                       evidence=evidence, state="READ_OPPORTUNITY")
@@ -464,7 +475,8 @@ class DoorApproachPreview:
             read.append("candidate_sign_roi_too_small_or_absent")
         else:
             forward.append("candidate_sign_roi_ready_stop_instead")
-        if not cue and self._visual_confirmation is None and not self._source_reviewed(links):
+        if (not cue and self._visual_confirmation is None and not self._source_reviewed(links)
+                and not self.handheld_mode):
             forward.append("needs_visual_support_beyond_door_score")
         if target.bbox_xyxy_norm[0] <= .01 or target.bbox_xyxy_norm[2] >= .99:
             forward.append("centered_but_door_clipped")
@@ -506,7 +518,7 @@ class DoorApproachPreview:
             change = _geometry_change(previous_tracks.get(target.track_id), target)
             if change is not None and change["unstable"]:
                 common.append("unstable_target_or_fast_camera_turn")
-        if self.selection_source == "automatic" and len(contenders) != 1:
+        if self.selection_source == "automatic" and not self.handheld_mode and len(contenders) != 1:
             common.append("ambiguous_visible_doors")
         if plate in (("ambiguous_door_sign_or_ocr", "non_room_sign_context") if self.advisory else
                      ("ambiguous_door_sign_or_ocr", "non_room_sign_context", "associated_plate_ocr_failed")):
@@ -530,7 +542,9 @@ class DoorApproachPreview:
             if target.track_id in self._forward_hinted and advice["action"] != "FORWARD_SHORT":
                 blockers["FORWARD_SHORT"].append("forward_preview_budget_exhausted_no_execution_evidence")
         if self.advisory and target:
-            gates = self._advisory_gates(target, links, regions, contenders, emitted_forward=advice["action"] == "FORWARD_SHORT")
+            gates = self._advisory_gates(target, links, regions,
+                                         [target] if self.handheld_mode else contenders,
+                                         emitted_forward=advice["action"] == "FORWARD_SHORT")
             for action in gates:
                 blockers[action] = list(dict.fromkeys(common + gates[action] + (
                     ["target_not_centered"] if camera_relative_advice(target)[0] in ("TURN_LEFT", "TURN_RIGHT") else [])))

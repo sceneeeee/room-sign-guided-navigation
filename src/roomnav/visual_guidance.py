@@ -122,6 +122,10 @@ class VisualGuidanceController:
         self.halted = True
         self.pending_action_id = None
 
+    def revoke_pending(self) -> None:
+        """Cancel a stale hint while keeping this target controller usable."""
+        self.pending_action_id = None
+
     def acknowledge(self, action_id: int, *, completed: bool, safe: bool) -> None:
         if type(action_id) is not int or action_id != self.pending_action_id:
             raise ValueError("Feedback does not match pending motion")

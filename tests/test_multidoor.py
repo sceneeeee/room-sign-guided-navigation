@@ -12,6 +12,12 @@ DEFINITION = json.loads((ROOT / "examples/m4/search_episode.json").read_text())
 
 
 class EpisodeTests(unittest.TestCase):
+    def test_handheld_mode_is_recorded_in_replay_header(self):
+        session = MultiDoorSearchSession("handheld", "LSS119", origin="live_rgb", handheld_mode=True)
+        self.assertTrue(session.records[0]["handheld_mode"])
+        restored = replay(session.records)
+        self.assertTrue(restored.handheld_mode)
+
     def env(self):
         return FixtureEpisode(DEFINITION, "rule", 0)
 
@@ -352,6 +358,41 @@ class EpisodeTests(unittest.TestCase):
         self.assertNotEqual(track, out["candidates"][0]["track_id"])
         with self.assertRaises(ValueError):
             env.command("select", track_id=track)
+
+    def test_handheld_lock_recovers_short_loss_and_keeps_memory_on_manual_reselection(self):
+        env = self.env()
+        env.session.handheld_mode = True
+        env.session.records[0]["handheld_mode"] = True
+        first_door = [scene_item("door", [.30, .10, .70, .94]),
+                      scene_item("sign", [.44, .32, .55, .42], text="LSS118")]
+        env.frame(first_door)
+        first = env.frame(first_door)
+        door, sign = [c["track_id"] for c in first["candidates"]]
+        env.command("bind", track_id=door, sign_track_id=sign, physical_door_id="P", actor="observer")
+        second_door = [scene_item("door", [.60, .10, .90, .94]),
+                       scene_item("sign", [.69, .32, .78, .42], text="LSS119")]
+        lost = env.frame(second_door)
+        self.assertEqual(lost["tracking_mode"], "REOBSERVE")
+        self.assertEqual(lost["active_track"], door)
+        self.assertNotEqual(lost["state"], State.STOPPED)
+        resumed = env.frame(first_door)
+        self.assertEqual(resumed["active_track"], door)
+        self.assertEqual(resumed["tracking_mode"], "TARGET_LOCK")
+        memory_before = env.session.stream.memory.to_reasoning_context()
+
+        for _ in range(3):
+            current = env.frame(second_door)
+        other = next(c["track_id"] for c in current["candidates"] if c["category"] == "door")
+        self.assertEqual(current["tracking_mode"], "REOBSERVE")
+        env.command("select", track_id=other)
+        self.assertEqual(env.session.active, other)
+        self.assertIsNone(env.session.bound_physical)
+        self.assertEqual(env.session.visit_history, ["fixture:P"])
+        self.assertEqual(env.session.stream.memory.to_reasoning_context(), memory_before)
+        env.command("next")
+        self.assertIsNone(env.session.active)
+        self.assertTrue(env.session.live.preview.auto_select)
+        self.assertEqual(env.session.stream.memory.to_reasoning_context(), memory_before)
 
     def pending(self):
         env = self.env()
