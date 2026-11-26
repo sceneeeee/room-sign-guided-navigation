@@ -45,10 +45,14 @@ def canonical(value):
 
 
 class MultiDoorSearchSession:
-    def __init__(self, session_id, target, *, origin, policy="rule", budget=8, backend=None, model_timeout_s=3.0):
+    def __init__(self, session_id, target, *, origin, policy="rule", budget=8, backend=None,
+                 model_timeout_s=3.0, handheld_mode=False):
         if not re.fullmatch(r"[A-Za-z0-9_.-]+", session_id) or origin not in ORIGINS:
             raise ValueError("Invalid session ID or provenance")
+        if type(handheld_mode) is not bool:
+            raise ValueError("handheld_mode must be boolean")
         self.session_id, self.origin = session_id, origin
+        self.handheld_mode = handheld_mode
         self.stream = StreamSession(target)
         self.m1 = M1Session(session_id)
         self.policy = SearchPolicy(policy, budget=budget, backend=backend, timeout_s=model_timeout_s)
@@ -78,7 +82,8 @@ class MultiDoorSearchSession:
         self.intent = {}
         self.advice = {"action": "SEARCH", "reason": "Collect RGB"}
         self.records = [{"schema": SCHEMA, "session_id": session_id, "target": target,
-                         "origin": origin, "policy": policy, "budget": budget, "model_timeout_s": model_timeout_s}]
+                         "origin": origin, "policy": policy, "budget": budget, "model_timeout_s": model_timeout_s,
+                         "handheld_mode": handheld_mode}]
         self.transitions = []
         self.approach_check = None
 
@@ -138,7 +143,8 @@ class MultiDoorSearchSession:
     def _preview(self, tracker=None):
         origin = self.origin if self.origin in ("live_rgb", "recorded_video") else "synthetic"
         preview = DoorApproachPreview({"schema": ADVISORY_SCHEMA, "type": "start", "mode": "detector",
-                                       "evidence_origin": origin, "image_size": list(self.size)}, multi_door=True)
+                                       "evidence_origin": origin, "image_size": list(self.size),
+                                       "handheld_mode": self.handheld_mode}, multi_door=True)
         if tracker is not None:
             preview.tracker = tracker
         self.live.preview = preview
@@ -211,6 +217,12 @@ class MultiDoorSearchSession:
         self.approach_check = {k: diagnostics[k] for k in ("action_blockers", "door_candidates", "plate_status")
                                if k in diagnostics}
         self.selection = preview.selection_source
+        if result["reason"] == "locked_target_temporarily_lost":
+            if self.pending_id is not None:
+                self.pending_id = self.pending_kind = None
+            self.recovery = True
+        elif self.recovery and self.active in {c.track_id for c in preview.visible if c.category == "door"}:
+            self.recovery = False
         if self.live.stopped:
             self.evidence.release_approach()
             self.bound_captures.clear()
@@ -270,7 +282,7 @@ class MultiDoorSearchSession:
         elif kind == "fail":
             self._end(State.FAILED, cmd["reason"])
         elif kind == "frame":
-            if self.recovery:
+            if self.recovery and not self.handheld_mode:
                 raise ValueError("Explicitly release the lost lock before acquiring new RGB")
             try:
                 self._frame(cmd, rgb, recorded_model, timing)
@@ -293,6 +305,13 @@ class MultiDoorSearchSession:
                 self.pending_kind = None
                 self.advice = {"action": "WAIT_RGB", "reason": "Feedback received. Capture a newer frame."}
                 self._transition(State.REOBSERVE)
+        elif kind == "revoke":
+            if type(cmd["action_id"]) is not int or cmd["action_id"] != self.pending_id:
+                raise ValueError("Revocation must reference the pending action")
+            self.live.controller.revoke_pending()
+            self.pending_id = self.pending_kind = None
+            self.advice = {"action": "STOP_REOBSERVE", "reason": cmd["reason"]}
+            self._transition(State.REOBSERVE)
         elif kind == "next":
             if self.pending_id or not self.stamp or cmd["frame_id"] != self.stamp.frame_id:
                 raise ValueError("Finish pending feedback and reference the current frame")
@@ -312,20 +331,27 @@ class MultiDoorSearchSession:
             self.advice = {"action": "SEARCH", "reason": "Choose a visible door on new RGB"}
             self._transition(State.SEARCH)
         else:
-            if (self.recovery or not self.stamp or cmd["frame_id"] != self.stamp.frame_id
+            if ((self.recovery and not (self.handheld_mode and kind == "select"))
+                    or not self.stamp or cmd["frame_id"] != self.stamp.frame_id
                     or self.pending_id or at-self.stamp.timestamp_s > 2
                     or self.stamp.timestamp_s <= self.live.feedback_s):
                 raise ValueError("A fresh current frame with no pending feedback is required")
             if kind in ("select", "accept_intent"):
                 if kind == "accept_intent" and cmd["track_id"] != self.intent.get("suggested_track"):
                     raise ValueError("Track must match the current search intent")
-                if self.active and self.active != cmd["track_id"]:
+                if (self.active and self.active != cmd["track_id"]
+                        and not (self.handheld_mode and self.recovery and kind == "select")):
                     raise ValueError("End the current approach before selecting a different door")
                 if not any(c.category == "door" and c.track_id == cmd["track_id"]
                            for c in self.evidence.current):
                     raise ValueError("Choose a currently visible door")
                 self.live.select_target(cmd["track_id"], at_s=at)
                 self.policy.selected(self.evidence.current, cmd["track_id"])
+                if self.recovery and self.handheld_mode:
+                    self.evidence.release_approach()
+                    self.bound_physical = None
+                    self.bound_captures.clear()
+                    self.recovery = False
                 if kind == "accept_intent":
                     self.live.preview.selection_source = "policy_recommendation"
                 self.selection = self.live.preview.selection_source
@@ -377,7 +403,24 @@ class MultiDoorSearchSession:
         return out
 
     def snapshot(self):
+        visible = self.live.preview.visible if self.live.preview else []
+        visible_target = next((c for c in visible
+                               if c.track_id == self.active and c.category == "door"), None)
+        if self.active is None:
+            tracking_mode = "SEARCH"
+        elif self.recovery:
+            tracking_mode = "REOBSERVE"
+        else:
+            tracking_mode = "TARGET_LOCK"
+        ocr_rows = [{"track_id": c.track_id, "text": r.raw_text, "confidence": r.confidence,
+                     "door_track_id": c.door_track_id, "association_status": c.association_status}
+                    for c in self.evidence.current if c.category == "sign" for r in c.ocr]
         return {"state": self.state.value, "target": self.stream.target, "active_track": self.active,
+                "tracking_mode": tracking_mode,
+                "target_visible": visible_target is not None,
+                "target_bbox_xyxy_norm": list(visible_target.bbox_xyxy_norm) if visible_target else None,
+                "target_confidence": visible_target.score if visible_target else None,
+                "current_ocr": ocr_rows,
                 "selection": self.selection, "active_landmark": self.plate.landmark_id if self.plate else None,
                 "visual_confirmation": self.live.preview.visual_confirmation if self.live.preview else None,
                 "visited": list(dict.fromkeys(self.visit_history)), "visits": list(self.visit_history),

@@ -142,7 +142,7 @@ class YOLOWorldDetector:
         return sorted(detected, key=lambda det: det.score, reverse=True)
 
 
-def annotate_frame(frame, candidates, selected, *, category_colors=None):
+def annotate_frame(frame, candidates, selected, *, category_colors=None, dim_unrelated=False):
     """Render transient track IDs; these are NOT physical landmark IDs."""
     import numpy as np
     from PIL import Image, ImageDraw
@@ -155,8 +155,14 @@ def annotate_frame(frame, candidates, selected, *, category_colors=None):
         rect = (round(box[0]*width), round(box[1]*height),
                 round(box[2]*width), round(box[3]*height))
         active = candidate.track_id == selected
-        color = "#f24a4a" if active else (category_colors or {}).get(candidate.category, "#3386d0")
-        drawer.rectangle(rect, outline=color, width=4 if active else 2)
+        related = (candidate.category == "sign" and getattr(candidate, "door_track_id", None) == selected)
+        unrelated_door = candidate.category == "door" and selected is not None and not active
+        unrelated_sign = candidate.category == "sign" and selected is not None and not related \
+            and getattr(candidate, "door_track_id", None) is not None
+        dim = dim_unrelated and (unrelated_door or unrelated_sign)
+        color = "#f24a4a" if active else "#19b8cc" if related else (
+            "#777777" if dim else (category_colors or {}).get(candidate.category, "#3386d0"))
+        drawer.rectangle(rect, outline=color, width=4 if active else 1 if dim else 2)
         tag = f"{candidate.track_id} / {candidate.category}" + (" [selected]" if active else "")
         drawer.text((rect[0] + 4, max(0, rect[1] - 15)), tag, fill=color)
     return np.asarray(annotated)

@@ -13,7 +13,7 @@ from unittest.mock import patch
 import numpy as np
 
 from apps import multidoor_search as ui
-from roomnav.live_search import ACTION_LEASE_S, RGB_FRESHNESS_S, LiveSearchRun
+from roomnav.live_search import ACTION_LEASE_S, HANDHELD_ACTION_LEASE_S, RGB_FRESHNESS_S, LiveSearchRun
 from roomnav.multidoor import MultiDoorSearchSession, replay
 from roomnav.search_io import EpisodeLog
 from roomnav.search_policy import SearchPolicy
@@ -70,8 +70,9 @@ class LiveRuntimeTests(unittest.TestCase):
         self.directory = Path(directory.name)
         self.run = self.new_run("liveA")
 
-    def new_run(self, name):
-        search = MultiDoorSearchSession(name, "LSS119", origin="live_rgb", budget=0)
+    def new_run(self, name, *, handheld=False):
+        search = MultiDoorSearchSession(name, "LSS119", origin="live_rgb", budget=0,
+                                        handheld_mode=handheld)
         run = LiveSearchRun(search, EpisodeLog(self.directory / (name + ".jsonl")),
                             clock=self.clock, timer_factory=self.clock.timer)
         self.addCleanup(run.close, wait=True)
@@ -194,6 +195,22 @@ class LiveRuntimeTests(unittest.TestCase):
             self.assertEqual(self.frame()["lease"], issued)
         self.clock.advance(issued["expires_s"] - self.clock())
         self.assertEqual(self.run.records()[-1]["input"]["reason"], "action_expired")
+
+    def test_handheld_lease_is_longer_and_rgb_timeout_reobserves_without_ending_session(self):
+        self.run = self.new_run("handheld", handheld=True)
+        self.frame()
+        action = self.frame()
+        token = action["token"]
+        lease = action["lease"]
+        self.assertEqual(lease["expires_s"] - lease["issued_s"], HANDHELD_ACTION_LEASE_S)
+        self.clock.advance(RGB_FRESHNESS_S)
+        update = self.packet()
+        self.assertFalse(update["terminal"])
+        self.assertIsNone(update["lease"])
+        self.assertEqual(update["view"]["state"], "REOBSERVE")
+        self.assertEqual(update["view"]["advice"]["reason"], "rgb_stream_interrupted")
+        self.assertFalse(self.run.interact(self.feedback(token), token))
+        self.assertEqual(replay(self.run.records()).state.value, "REOBSERVE")
 
     def test_current_frame_exception_is_terminal_and_replayable(self):
         packet = self.frame()
@@ -330,11 +347,14 @@ global.window = {addEventListener() {}};
 global.performance = {now: () => now};
 global.setTimeout = cb => { timer = cb; return 1; };
 global.clearTimeout = () => { timer = null; };
+global.setInterval = () => 0;
 eval(fs.readFileSync(process.argv[1], "utf8"))();
 const ui = window.roomnavLive;
 const move = (epoch, session, generation, request_ms=0, remaining_ms=1000, action_remaining_ms=6000) => ({
     epoch, token:{session,generation,action:1}, terminal:false, request_ms, remaining_ms, action_remaining_ms,
-    lease:{action_id:1,kind:"TURN_RIGHT"}, view:{state:"ALIGN",advice:{action:"TURN_RIGHT",reason:"test"}}
+    image:"data:image/jpeg;base64,test", lease:{action_id:1,kind:"TURN_RIGHT"},
+    view:{state:"ALIGN",tracking_mode:"TARGET_LOCK",active_track:"track00001",current_ocr:[],
+      advice:{action:"TURN_RIGHT",reason:"test"}}
 });
 ui.request("reset");
 ui.render(move(1,"old",1));
@@ -353,6 +373,7 @@ now=999.8; const early = timer; timer = null; early();
 assert.equal(typeof timer,"function");
 now=1000; timer();
 assert.match(nodes.advice.textContent,/expired/);
+assert.equal(nodes.marked.hidden, false); // expiry keeps the live view available
 assert.equal(ui.request("done").token,null);
 ui.render(move(2,"new",2,1000));
 assert.match(nodes.advice.textContent,/expired/);
@@ -376,5 +397,12 @@ ui.render(pending); // The first poll can arrive after a newer RGB commit.
 assert.match(nodes.advice.textContent,/TURN_RIGHT/);
 assert.equal(ui.request("done").token.action,1);
 assert.equal(ui.request("done").token,null);
+ui.request("reset");
+const terminal = move(5,"terminal",1);
+terminal.terminal = true;
+terminal.view.state = "STOPPED";
+terminal.view.advice = {action:"STOP",reason:"emergency_stop"};
+ui.render(terminal);
+assert.equal(nodes.marked.hidden, false); // terminal HUD retains the last annotated frame
 """
         subprocess.run(["node", "-e", harness, str(script)], check=True, timeout=5)

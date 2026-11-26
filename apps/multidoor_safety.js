@@ -7,25 +7,38 @@
     let expiredAction = null;
     let watchdog;
     let deadline = null;
+    let statusText = "";
+    let displayedLease = null;
 
     const advice = () => document.getElementById("roomnav-advice");
     const details = () => document.getElementById("roomnav-details");
     const image = () => document.getElementById("roomnav-marked");
+    const lockStatus = () => document.getElementById("roomnav-lock");
+    const ocrStatus = () => document.getElementById("roomnav-ocr");
 
-    function clearDisplay(text) {
+    function refreshAdvice() {
+        if (!advice()) return;
+        const seconds = deadline ? Math.max(0, Math.ceil((deadline.time - performance.now()) / 1000)) : null;
+        advice().textContent = statusText + (seconds !== null ? ` · ${seconds}s` : "");
+    }
+    setInterval(refreshAdvice, 250);
+
+    function clearDisplay(text, keepImage = false) {
         clearTimeout(watchdog);
         deadline = null;
-        if (advice()) advice().textContent = text;
-        if (details()) details().textContent = "";
-        if (image()) {
+        statusText = text;
+        displayedLease = null;
+        refreshAdvice();
+        if (details() && !keepImage) details().textContent = "";
+        if (image() && !keepImage) {
             image().hidden = true;
             image().removeAttribute("src");
         }
     }
 
-    function latchStop(text) {
+    function latchStop(text, keepImage = false) {
         latched = true;
-        clearDisplay(text);
+        clearDisplay(text, keepImage);
     }
 
     function expireDisplay() {
@@ -37,7 +50,7 @@
             return;
         }
         expiredAction = deadline.action;
-        clearDisplay("STOP · Movement advice expired; awaiting session status");
+        clearDisplay("STOP_REOBSERVE · Action expired; keep observing", true);
     }
 
     function expireIfDue() {
@@ -74,7 +87,7 @@
                 latchStop("STOPPED · Stop requested");
             } else if (kind === "done" && requestToken?.action != null) {
                 acknowledgedAction = requestToken.action;
-                clearDisplay("WAIT_RGB · Feedback submitted");
+                clearDisplay("WAIT_RGB · Feedback submitted", true);
             }
             return {epoch, generation, request_ms: performance.now(),
                     token: kind === "reset" ? null : requestToken};
@@ -90,8 +103,13 @@
             token = packet.token;
             const view = packet.view;
             if (packet.terminal) {
-                latchStop(view.state + " · " + view.advice.reason);
+                latchStop(view.state + " · " + view.advice.reason, true);
                 if (details()) details().textContent = JSON.stringify(view, null, 2);
+                if (image() && packet.image) {
+                    image().hidden = false;
+                    image().src = packet.image;
+                }
+                if (lockStatus()) lockStatus().textContent = `${view.tracking_mode ?? view.state} · ${view.active_track ?? "no target"}`;
                 return true;
             }
             const lease = packet.lease;
@@ -104,6 +122,7 @@
                     ? Math.min(deadline.actionTime, sampledActionTime) : sampledActionTime;
                 const time = Math.min(actionTime, packet.request_ms + packet.remaining_ms);
                 deadline = {action: lease.action_id, time, actionTime};
+                displayedLease = lease;
                 if (time <= performance.now()) {
                     expireDisplay();
                     return;
@@ -112,11 +131,21 @@
                 watchdog = setTimeout(expireDisplay, Math.ceil(time - performance.now()));
             } else {
                 deadline = null;
+                displayedLease = null;
                 clearTimeout(watchdog);
             }
-            if (advice()) {
-                const action = lease?.kind ?? view.advice.action;
-                advice().textContent = view.state + " · " + action + " · " + view.advice.reason;
+            const action = lease?.kind ?? view.advice.action;
+            statusText = `${view.state} · ${action} · ${view.advice.reason}`;
+            refreshAdvice();
+            if (lockStatus()) {
+                lockStatus().textContent = `${view.tracking_mode ?? view.state} · ${view.active_track ?? "no target"}`
+                    + (view.target_confidence != null ? ` · ${Math.round(view.target_confidence * 100)}%` : "");
+            }
+            if (ocrStatus()) {
+                const readings = view.current_ocr ?? [];
+                ocrStatus().textContent = readings.length
+                    ? "OCR (unverified): " + readings.map(x => `${x.text} (${x.track_id})`).join(" · ")
+                    : "OCR: no sign text yet";
             }
             if (details()) details().textContent = JSON.stringify(view, null, 2);
             if (image()) {

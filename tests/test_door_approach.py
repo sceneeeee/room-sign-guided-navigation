@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from roomnav.door_approach import DoorApproachPreview, SCHEMA, replay_approach_log
+from roomnav.door_approach import ADVISORY_SCHEMA, DoorApproachPreview, SCHEMA, replay_approach_log
 from roomnav.offline_approach import convert_detector_log, summarize, write_preview_artifacts
 from roomnav.offline_cli import main
 from roomnav.offline_replay import ReplaySession, SCHEMA as M31_SCHEMA
@@ -81,6 +81,70 @@ class DoorApproachTests(unittest.TestCase):
             self.assertEqual(a["action"], "STOP_REOBSERVE")
         self.assertEqual(a["state"], "ALIGN")
         self.assertEqual(a["reason"], "no_associated_plate_cue")
+
+    def test_handheld_mode_skips_visual_confirmation_gate_but_keeps_other_gates(self):
+        def session(handheld):
+            return DoorApproachPreview({"type": "start", "schema": ADVISORY_SCHEMA,
+                "mode": "detector", "evidence_origin": "live_rgb", "image_size": [1920, 1080],
+                "handheld_mode": handheld}, multi_door=True)
+
+        guarded, handheld = session(False), session(True)
+        for i in range(3):
+            guarded_out = guarded.process_event(frame(i, sign=False))
+            handheld_out = handheld.process_event(frame(i, sign=False))
+        self.assertEqual(guarded_out["advice"]["action"], "STOP_REOBSERVE")
+        self.assertIn("needs_visual_support_beyond_door_score",
+                      guarded_out["diagnostics"]["action_blockers"]["FORWARD_SHORT"])
+        self.assertEqual(handheld_out["advice"]["action"], "FORWARD_SHORT")
+        self.assertFalse(handheld_out["advice"]["motion_authorized"])
+
+    def test_handheld_target_lock_ignores_unrelated_door_and_reobserves_through_loss(self):
+        locked = DoorApproachPreview({"type": "start", "schema": ADVISORY_SCHEMA,
+            "mode": "detector", "evidence_origin": "live_rgb", "image_size": [1920, 1080],
+            "handheld_mode": True}, multi_door=True)
+
+        def event(i, *, target=True, other=False):
+            e = frame(i, box=(.36, .1, .66, .9), sign=False)
+            e["detections"] = [] if not target else e["detections"]
+            if other:
+                e["detections"].append(asdict(Detection("door", (.76, .1, .96, .9), .72)))
+            return e
+
+        locked.process_event(event(0))
+        locked.process_event(event(1))
+        out = locked.process_event(event(2, other=True))
+        self.assertEqual(out["advice"]["action"], "FORWARD_SHORT")
+        target_id = locked.target_track_id
+        lost = locked.process_event(event(3, target=False, other=True))
+        self.assertEqual(lost["advice"]["reason"], "locked_target_temporarily_lost")
+        self.assertFalse(locked.halted)
+        recovered = locked.process_event(event(4, other=True))
+        self.assertEqual(locked.target_track_id, target_id)
+        self.assertEqual(recovered["advice"]["track_id"], target_id)
+
+    def test_handheld_long_loss_never_retargets_other_door_automatically(self):
+        locked = DoorApproachPreview({"type": "start", "schema": ADVISORY_SCHEMA,
+            "mode": "detector", "evidence_origin": "live_rgb", "image_size": [1920, 1080],
+            "handheld_mode": True}, multi_door=True)
+        def event(i, target, other=False):
+            e = frame(i, box=(.36, .1, .66, .9), sign=False)
+            if not target:
+                e["detections"] = []
+            if other:
+                e["detections"].append(asdict(Detection("door", (.76, .1, .96, .9), .72)))
+            return e
+        locked.process_event(event(0, True))
+        locked.process_event(event(1, True))
+        original = locked.target_track_id
+        for i in (2, 3, 4):
+            out = locked.process_event(event(i, False, True))
+        other = next(c for c in locked.visible if c.category == "door")
+        self.assertEqual(out["advice"]["reason"], "locked_target_temporarily_lost")
+        self.assertEqual(locked.target_track_id, original)
+        self.assertNotEqual(other.track_id, original)
+        selected = locked.process_event({"type": "select_target", "frame_id": locked.stamp.frame_id,
+                                         "track_id": other.track_id})
+        self.assertEqual(selected["selected_track_id"], other.track_id)
 
     def test_centered_plate_cue_allows_only_one_human_judged_forward_hint(self):
         self.step()

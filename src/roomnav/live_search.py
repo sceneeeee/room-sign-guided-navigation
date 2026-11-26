@@ -9,9 +9,11 @@ from time import monotonic
 from .multidoor import TERMINAL
 from .offline_video import FrameStamp
 
-# A short human turn/step has six seconds for execution and feedback.
+# The default desktop human turn/step has six seconds; handheld phone tests get
+# a longer feedback window while retaining the independent RGB freshness gate.
 # Two seconds without usable RGB is the existing image freshness limit.
 ACTION_LEASE_S = 6.0
+HANDHELD_ACTION_LEASE_S = 15.0
 RGB_FRESHNESS_S = 2.0
 
 
@@ -26,6 +28,7 @@ class ActionLease:
 class LiveSearchRun:
     def __init__(self, search, log, *, clock=monotonic, timer_factory=Timer):
         self._search, self.log = search, log
+        self._action_lease_s = HANDHELD_ACTION_LEASE_S if search.handheld_mode else ACTION_LEASE_S
         self._records = list(search.records)
         self._view = search.snapshot()
         self._clock, self._timer_factory = clock, timer_factory
@@ -124,7 +127,16 @@ class LiveSearchRun:
     def _expire_locked(self, now):
         if self._lease is not None and now >= self._deadline():
             reason = "action_expired" if now >= self._lease.expires_s else "rgb_stream_interrupted"
-            self._stop_locked(reason, now)
+            if self._search.handheld_mode:
+                draft = self._draft(self._search)
+                action_id = self._lease.action_id
+                view = draft.apply({"type": "revoke", "at_s": now,
+                                    "action_id": action_id, "reason": reason})
+                self._lease = None
+                self._watch()
+                self._publish_locked(draft, view)
+            else:
+                self._stop_locked(reason, now)
 
     def stop(self, reason="emergency_stop"):
         with self._lock:
@@ -149,6 +161,7 @@ class LiveSearchRun:
             token = {"session": s.session_id, "generation": s.generation,
                      "frame": s.stamp.frame_id if s.stamp else None,
                      "track": s.active, "landmark": self._view["active_landmark"],
+                     "suggested_track": (self._view.get("intent") or {}).get("suggested_track"),
                      "action": s.pending_id, "completed_action": s.last_completed_id}
             return {"epoch": epoch, "token": token, "view": self._view, "image": self._image,
                     "terminal": s.state in TERMINAL, "request_ms": client_ms,
@@ -193,7 +206,7 @@ class LiveSearchRun:
     def _process_frame(self, rgb, token, perceive, annotate, received):
         with self._lock:
             base = self._search
-            if (not self._current_locked(base) or base.recovery
+            if (not self._current_locked(base) or base.recovery and not base.handheld_mode
                     or token.get("session") != base.session_id
                     or token.get("generation", -1) < self._minimum_frame_generation
                     or token.get("completed_action") != base.last_completed_id):
@@ -220,7 +233,8 @@ class LiveSearchRun:
                     self._stop_locked("advice_expired_before_display", now)
                     return True
                 if draft.pending_id is not None and self._lease is None:
-                    self._lease = ActionLease(draft.pending_id, draft.pending_kind, now, now + ACTION_LEASE_S)
+                    self._lease = ActionLease(draft.pending_id, draft.pending_kind, now,
+                                              now + self._action_lease_s)
                     draft.records[-1]["timing"]["issued_action"] = asdict(self._lease)
                 elif draft.pending_id is None:
                     self._lease = None
